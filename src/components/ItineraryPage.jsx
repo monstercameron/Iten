@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Eye, EyeOff } from "lucide-react";
+import { Search, Eye, EyeOff, DollarSign, AlertCircle } from "lucide-react";
 import { ITINERARY_DAYS } from "../data/itinerary";
 import { DayCard } from "./DayCard";
 import { classNames } from "../utils/classNames";
@@ -9,6 +9,40 @@ export function ItineraryPage() {
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [showBackupPlans, setShowBackupPlans] = useState(false);
   const [query, setQuery] = useState("");
+
+  // Calculate total costs across all days
+  const totals = useMemo(() => {
+    const costByCurrency = {};
+    let totalUnbooked = 0;
+    
+    ITINERARY_DAYS.forEach(day => {
+      if (day.metadata?.estimatedCost) {
+        const currencies = day.metadata.costCurrencies || [];
+        currencies.forEach(currency => {
+          if (!costByCurrency[currency]) {
+            costByCurrency[currency] = 0;
+          }
+        });
+        // Add cost to first currency found (simplified)
+        if (currencies.length > 0) {
+          costByCurrency[currencies[0]] = (costByCurrency[currencies[0]] || 0) + day.metadata.estimatedCost;
+        }
+      }
+      if (day.metadata?.unbootedCount) {
+        totalUnbooked += day.metadata.unbootedCount;
+      }
+    });
+    
+    return { costByCurrency, totalUnbooked };
+  }, []);
+
+  // Format currency display
+  const formatCosts = (costByCurrency) => {
+    return Object.entries(costByCurrency)
+      .filter(([_, amount]) => amount > 0)
+      .map(([currency, amount]) => `${amount.toLocaleString()} ${currency}`)
+      .join(' + ');
+  };
 
   // Filtered itinerary based on search query
   const filteredItinerary = useMemo(() => {
@@ -52,6 +86,50 @@ export function ItineraryPage() {
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-8">
         <h1 className="text-4xl font-bold text-white mb-6">✈️ Travel Itinerary</h1>
+
+        {/* Total Cost Tracker */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Total Estimated Cost */}
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+              <DollarSign className="h-4 w-4" />
+              <span>Estimated Total</span>
+            </div>
+            <div className="text-xl font-bold text-emerald-400">
+              {formatCosts(totals.costByCurrency) || '$0'}
+            </div>
+          </div>
+
+          {/* Items to Book */}
+          <div className={classNames(
+            "border rounded-xl p-4",
+            totals.totalUnbooked > 0 
+              ? "bg-red-950/40 border-red-800/60" 
+              : "bg-zinc-900/60 border-zinc-800"
+          )}>
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+              <AlertCircle className="h-4 w-4" />
+              <span>Items to Book</span>
+            </div>
+            <div className={classNames(
+              "text-xl font-bold",
+              totals.totalUnbooked > 0 ? "text-red-400" : "text-zinc-500"
+            )}>
+              {totals.totalUnbooked > 0 ? `${totals.totalUnbooked} items` : 'All booked ✓'}
+            </div>
+          </div>
+
+          {/* Trip Duration */}
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+              <span>📅</span>
+              <span>Trip Duration</span>
+            </div>
+            <div className="text-xl font-bold text-sky-400">
+              {ITINERARY_DAYS.length} days
+            </div>
+          </div>
+        </div>
 
         {/* Controls */}
         <div className="flex flex-col gap-4 mb-6">

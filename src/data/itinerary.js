@@ -14,14 +14,25 @@ const STATUS_MAPPING = {
 
 /**
  * Helper: Get all dates between start and end (inclusive)
+ * Uses string manipulation to avoid timezone issues
  */
 function getDateRange(startDate, endDate) {
   const dates = [];
-  const current = new Date(startDate);
-  const end = new Date(endDate);
+  
+  // Parse the date strings manually to avoid timezone issues
+  const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+  const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+  
+  // Create dates at noon to avoid DST issues
+  const current = new Date(startYear, startMonth - 1, startDay, 12, 0, 0);
+  const end = new Date(endYear, endMonth - 1, endDay, 12, 0, 0);
   
   while (current <= end) {
-    dates.push(current.toISOString().split('T')[0]);
+    // Format as YYYY-MM-DD
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    dates.push(`${year}-${month}-${day}`);
     current.setDate(current.getDate() + 1);
   }
   
@@ -33,31 +44,18 @@ function getDateRange(startDate, endDate) {
  */
 function parseItinerary(data = rawItineraryData) {
   const dayMap = new Map();
-  
-  // First pass: find min and max dates across all trips
-  let minDate = null;
-  let maxDate = null;
-  
-  data.trips.forEach(trip => {
-    trip.segments.forEach(segment => {
-      const startDate = segment.date;
-      const endDate = segment.dateEnd || segment.date;
-      
-      if (!minDate || startDate < minDate) minDate = startDate;
-      if (!maxDate || endDate > maxDate) maxDate = endDate;
-    });
-  });
-  
-  // Create entries for ALL dates in the range
-  if (minDate && maxDate) {
-    const allDates = getDateRange(minDate, maxDate);
-    allDates.forEach(date => {
+
+  // Helper to create or get a day entry
+  function getOrCreateDay(date, trip, segment) {
+    if (!dayMap.has(date)) {
       dayMap.set(date, {
         dateKey: date,
         dateDisplay: formatDate(date),
-        timezone: 'UTC',
-        summary: 'In Transit / Continuation',
-        location: null,
+        timezone: segment?.tzLabel || segment?.tzFrom || segment?.tz || 'UTC',
+        tz: segment?.tz || null, // Region: US, PH, JP
+        region: trip?.region || null,
+        summary: trip.name,
+        location: extractLocation(segment),
         travel: [],
         shelter: {},
         meals: [],
@@ -69,49 +67,41 @@ function parseItinerary(data = rawItineraryData) {
           costCurrencies: new Set(),
           unbootedCount: 0,
           hasUnbooked: false,
-          isContinuationDay: true
+          isContinuationDay: false
         }
       });
-    });
+    }
+    return dayMap.get(date);
   }
 
-  // Second pass: Group all segments by date (including multi-day spans)
+  // Process all segments
   data.trips.forEach(trip => {
     trip.segments.forEach(segment => {
       const startDate = segment.date;
       const endDate = segment.dateEnd || segment.date;
-      const segmentDates = getDateRange(startDate, endDate);
+      const segmentType = segment.type.toLowerCase();
+      
+      // Determine which dates this segment should appear on
+      // ALWAYS expand to all dates in range - show every date on timeline
+      let segmentDates = getDateRange(startDate, endDate);
       
       segmentDates.forEach((date, dateIndex) => {
-        if (!dayMap.has(date)) {
-          dayMap.set(date, {
-            dateKey: date,
-            dateDisplay: formatDate(date),
-            timezone: segment.tz || segment.tzFrom || 'UTC',
-            summary: trip.name,
-            location: extractLocation(segment),
-            travel: [],
-            shelter: {},
-            meals: [],
-            activities: [],
-            metadata: {
-              hasTravel: false,
-              locationFlags: [],
-              estimatedCost: 0,
-              costCurrencies: new Set(),
-              unbootedCount: 0,
-              hasUnbooked: false
-            }
-          });
+        const day = getOrCreateDay(date, trip, segment);
+        
+        // Mark intermediate flight dates (crossing dateline)
+        if (segmentType === 'flight' && segmentDates.length > 1) {
+          if (dateIndex > 0 && dateIndex < segmentDates.length - 1) {
+            // This is an intermediate date (e.g., Jan 31 for SFO→MNL)
+            day.isInFlight = true;
+            day.inFlightDetails = {
+              route: segment.route,
+              flight: segment.flight || segment.details,
+              note: 'Crossing International Date Line'
+            };
+          }
         }
         
-        const day = dayMap.get(date);
-        
-        // Update day metadata from trip/segment info (not a blank continuation day)
-        day.metadata.isContinuationDay = false;
-        if (!day.summary || day.summary === 'In Transit / Continuation') {
-          day.summary = trip.name;
-        }
+        // Update day info
         if (segment.tz || segment.tzFrom) {
           day.timezone = segment.tz || segment.tzFrom;
         }
@@ -173,12 +163,23 @@ function parseItinerary(data = rawItineraryData) {
         case 'transit':
         case 'bus':
         case 'airport':
-          // Add backup plan structure if it's a critical flight (only on first day)
-          if (segment.type.toLowerCase() === 'flight' && dateIndex === 0) {
-            segmentData.backupPlan = generateBackupPlan(segment);
-            day.travel.push(segmentData);
-          } else if (dateIndex === 0) {
-            day.travel.push(segmentData);
+          // For flights: show on departure date (dateIndex 0) and arrival date (dateIndex 1 for cross-dateline)
+          // Mark if this is arrival vs departure for display
+          const isArrivalDate = dateIndex === segmentDates.length - 1 && segmentDates.length > 1;
+          const isDepartureDate = dateIndex === 0;
+          
+          if (isDepartureDate || isArrivalDate) {
+            const flightData = {
+              ...segmentData,
+              isDeparture: isDepartureDate,
+              isArrival: isArrivalDate,
+              crossesDateline: segmentDates.length > 1 && segment.type.toLowerCase() === 'flight'
+            };
+            
+            if (segment.type.toLowerCase() === 'flight' && isDepartureDate) {
+              flightData.backupPlan = generateBackupPlan(segment);
+            }
+            day.travel.push(flightData);
           }
           break;
 
@@ -334,9 +335,12 @@ function formatTime(start, end) {
 
 /**
  * Format date string to readable format
+ * Parses YYYY-MM-DD manually to avoid timezone issues
  */
 function formatDate(dateStr) {
-  const date = new Date(dateStr);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // Create date at noon to avoid DST issues
+  const date = new Date(year, month - 1, day, 12, 0, 0);
   const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
   return date.toLocaleDateString('en-US', options);
 }
