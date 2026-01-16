@@ -1,5 +1,10 @@
 import rawItineraryData from './rawItinerary.json';
 
+// Export budget and trip metadata
+export const TRIP_BUDGET = rawItineraryData.budget || { total: 0, currency: 'USD' };
+export const TRIP_NAME = rawItineraryData.tripName || 'Travel Itinerary';
+export const TRAVELERS = rawItineraryData.travelers || [];
+
 const STATUS_MAPPING = {
   'BOOKED': 'BOOKED',
   'PLANNED': 'PLANNED',
@@ -185,7 +190,19 @@ function parseItinerary(data = rawItineraryData) {
 
         case 'stay':
         case 'check-in':
-          // Apply shelter to this day
+          // For accommodations:
+          // - dateEnd represents checkout DATE (morning you leave)
+          // - Only show shelter for nights you're actually sleeping there
+          // - If dateEnd exists, don't show shelter on the checkout date itself
+          const isCheckoutDay = segment.dateEnd && dateIndex === segmentDates.length - 1;
+          
+          // Skip applying shelter on checkout day - you're leaving, not staying
+          if (isCheckoutDay) {
+            // Don't set shelter for checkout day - let another segment fill it
+            break;
+          }
+          
+          // Apply shelter to this day (nights you're sleeping there)
           if (!day.shelter.name) {
             if (segment.shelter) {
               day.shelter = {
@@ -193,22 +210,27 @@ function parseItinerary(data = rawItineraryData) {
                 address: segment.shelter.address,
                 type: segment.shelter.type || null,
                 notes: segment.shelter.notes || null,
-                checkIn: dateIndex === 0 ? (segment.timeStart || null) : null,
-                checkOut: dateIndex === segmentDates.length - 1 ? (segment.timeEnd || null) : null,
+                host: segment.shelter.host || null,
+                checkIn: dateIndex === 0 ? (segment.timeStart || segment.shelter.checkIn || null) : null,
+                checkOut: segment.shelter.checkOut || null,
                 isMultiDayStay: segmentDates.length > 1,
                 dayOfStay: dateIndex + 1,
-                totalStayDays: segmentDates.length
+                totalStayDays: segmentDates.length - 1, // Subtract 1 because last day is checkout
+                estimatedCost: segment.estimatedCost || null,
+                currency: segment.currency || null
               };
             } else {
               day.shelter = {
                 name: segment.location || segment.details,
                 address: extractAddress(segment.details),
                 checkIn: dateIndex === 0 ? (segment.timeStart || null) : null,
-                checkOut: dateIndex === segmentDates.length - 1 ? (segment.timeEnd || null) : null,
+                checkOut: null,
                 notes: segment.note || null,
                 isMultiDayStay: segmentDates.length > 1,
                 dayOfStay: dateIndex + 1,
-                totalStayDays: segmentDates.length
+                totalStayDays: segmentDates.length - 1,
+                estimatedCost: segment.estimatedCost || null,
+                currency: segment.currency || null
               };
             }
           }

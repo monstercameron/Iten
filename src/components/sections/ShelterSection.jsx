@@ -43,15 +43,22 @@ export function ShelterSection({ shelter, isExpanded, onToggle }) {
             </div>
           )}
 
-          {shelter.checkIn && (
-            <div className="text-xs text-purple-300">
-              ✓ Check-in: {shelter.checkIn}
+          {/* Show check-in on first day, check-out on last night only */}
+          {(shelter.checkIn || (shelter.checkOut && shelter.dayOfStay === shelter.totalStayDays)) && (
+            <div className="text-xs text-purple-300 flex flex-wrap gap-x-4 gap-y-1">
+              {shelter.checkIn && (
+                <span>✓ Check-in: {shelter.checkIn}</span>
+              )}
+              {shelter.checkOut && shelter.dayOfStay === shelter.totalStayDays && (
+                <span>✓ Check-out: {shelter.checkOut}</span>
+              )}
             </div>
           )}
 
-          {shelter.checkOut && (
-            <div className="text-xs text-purple-300">
-              ✓ Check-out: {shelter.checkOut}
+          {/* Show stay progress for multi-day stays */}
+          {shelter.isMultiDayStay && shelter.dayOfStay && shelter.totalStayDays && (
+            <div className="text-xs text-purple-400">
+              📅 Night {shelter.dayOfStay} of {shelter.totalStayDays}
             </div>
           )}
 
