@@ -252,15 +252,36 @@ function parseItinerary(data = rawItineraryData) {
         case 'explore':
         case 'prep':
         case 'ski setup':
+        case 'activities':
           if (dateIndex === 0) {
-            day.activities.push({
-              id: segment.id,
-              name: segment.details,
-              location: segment.location,
-              time: formatTime(segment.timeStart, segment.timeEnd),
-              description: segment.details,
-              type: segment.type
-            });
+            // Check if segment has rich activities array
+            if (segment.activities && Array.isArray(segment.activities)) {
+              segment.activities.forEach(act => {
+                day.activities.push({
+                  id: `${segment.id}-${act.name}`,
+                  name: act.name,
+                  location: act.location || segment.location,
+                  time: formatTime(act.timeStart, act.timeEnd),
+                  description: act.notes || act.name,
+                  type: act.category || segment.type,
+                  icon: act.icon,
+                  priority: act.priority,
+                  category: act.category,
+                  estimatedCost: act.estimatedCost,
+                  currency: act.currency,
+                  notes: act.notes
+                });
+              });
+            } else {
+              day.activities.push({
+                id: segment.id,
+                name: segment.details,
+                location: segment.location,
+                time: formatTime(segment.timeStart, segment.timeEnd),
+                description: segment.details,
+                type: segment.type
+              });
+            }
           }
           break;
 

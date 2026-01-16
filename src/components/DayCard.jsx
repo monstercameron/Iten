@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Check, Plus } from "lucide-react";
 import { TravelSection } from "./sections/TravelSection";
 import { ShelterSection } from "./sections/ShelterSection";
 import { MealsSection } from "./sections/MealsSection";
 import { ActivitiesSection } from "./sections/ActivitiesSection";
 import { DayMetadata } from "./DayMetadata";
+import AddActivityModal from "./AddActivityModal";
 import { classNames } from "../utils/classNames";
 
 const sectionNames = {
@@ -98,8 +99,15 @@ export function DayCard({
   expandedSections,
   onToggleSection,
   showBackupPlans,
+  manualActivities = [],
+  onAddActivity,
+  onRemoveActivity,
 }) {
   const [copied, setCopied] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Combine parsed activities with manually added ones
+  const allActivities = [...(day.activities || []), ...manualActivities];
 
   const isSectionExpanded = (sectionName) => {
     return expandedSections.has(`${day.dateKey}:${sectionName}`);
@@ -117,6 +125,14 @@ export function DayCard({
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  };
+
+  const handleAddActivity = (activity) => {
+    onAddActivity?.(activity, day.dateKey);
+  };
+
+  const handleRemoveActivity = (activityId) => {
+    onRemoveActivity?.(activityId, day.dateKey);
   };
 
   return (
@@ -210,12 +226,31 @@ export function DayCard({
 
           {/* Activities Section */}
           <ActivitiesSection
-            items={day.activities}
+            items={allActivities}
             isExpanded={isSectionExpanded(sectionNames.activities)}
             onToggle={() => onToggleSection(sectionNames.activities)}
+            manualActivityIds={manualActivities.map(a => a.id)}
+            onRemoveActivity={handleRemoveActivity}
           />
+
+          {/* Add Activity Button */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-full py-2 px-4 border-2 border-dashed border-zinc-700 hover:border-blue-500 rounded-xl text-zinc-400 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={18} />
+            Add Activity
+          </button>
         </div>
       )}
+
+      {/* Add Activity Modal */}
+      <AddActivityModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAdd={handleAddActivity}
+        date={day.dateKey}
+      />
     </div>
   );
 }

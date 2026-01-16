@@ -1,14 +1,63 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Search, Eye, EyeOff, DollarSign, AlertCircle, Wallet, TrendingDown } from "lucide-react";
 import { ITINERARY_DAYS, TRIP_BUDGET, TRIP_NAME } from "../data/itinerary";
 import { DayCard } from "./DayCard";
 import { classNames } from "../utils/classNames";
+
+// Local storage key for persisting manual activities
+const STORAGE_KEY = 'travel_iten_manual_activities';
+
+// Load manual activities from localStorage
+const loadManualActivities = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+// Save manual activities to localStorage
+const saveManualActivities = (activities) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
+  } catch (e) {
+    console.error('Failed to save activities:', e);
+  }
+};
 
 export function ItineraryPage() {
   const [expandedDays, setExpandedDays] = useState(new Set());
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [showBackupPlans, setShowBackupPlans] = useState(false);
   const [query, setQuery] = useState("");
+  
+  // Manual activities state - persisted to localStorage
+  const [manualActivities, setManualActivities] = useState(loadManualActivities);
+
+  // Add a new manual activity for a specific date
+  const addManualActivity = useCallback((activity, dateKey) => {
+    setManualActivities(prev => {
+      const updated = {
+        ...prev,
+        [dateKey]: [...(prev[dateKey] || []), activity]
+      };
+      saveManualActivities(updated);
+      return updated;
+    });
+  }, []);
+
+  // Remove a manual activity
+  const removeManualActivity = useCallback((activityId, dateKey) => {
+    setManualActivities(prev => {
+      const updated = {
+        ...prev,
+        [dateKey]: (prev[dateKey] || []).filter(a => a.id !== activityId)
+      };
+      saveManualActivities(updated);
+      return updated;
+    });
+  }, []);
 
   // Calculate total costs across all days
   const totals = useMemo(() => {
@@ -260,6 +309,9 @@ export function ItineraryPage() {
               toggleSection(day.dateKey, sectionName)
             }
             showBackupPlans={showBackupPlans}
+            manualActivities={manualActivities[day.dateKey] || []}
+            onAddActivity={addManualActivity}
+            onRemoveActivity={removeManualActivity}
           />
         ))}
 
