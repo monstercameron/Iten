@@ -1,8 +1,75 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Plane } from "lucide-react";
+import { ChevronDown, ChevronRight, Plane, Clock, Timer, MapPin, Armchair, Coffee, Hourglass, ShieldCheck } from "lucide-react";
 import { StatusPill } from "../StatusPill";
 import { TravelRouteMap } from "../TravelRouteMap";
 import { classNames } from "../../utils/classNames";
+
+// Check if item is a buffer segment
+const isBufferSegment = (item) => item.status === 'BUFFER';
+
+// Buffer segment component - special attractive styling
+function BufferSegmentCard({ item }) {
+  return (
+    <div className="p-4">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-violet-950/40 via-purple-950/30 to-indigo-950/40 border border-violet-700/40 p-5">
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative flex items-center gap-5">
+          {/* Icon container */}
+          <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/30 to-indigo-600/30 border border-violet-500/40 flex items-center justify-center">
+            <Hourglass className="w-8 h-8 text-violet-300" />
+          </div>
+          
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold text-violet-100">
+                ⏳ Buffer Time
+              </h3>
+              <StatusPill code={item.status} />
+            </div>
+            
+            <p className="text-violet-200/80 text-sm mb-3">
+              {item.details || item.route || 'Scheduled buffer period'}
+            </p>
+            
+            {/* Tags row */}
+            <div className="flex flex-wrap items-center gap-3">
+              {item.time && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-800/40 border border-violet-600/50 text-sm text-violet-200">
+                  <Clock className="h-4 w-4 text-violet-400" />
+                  <span>{item.time}</span>
+                </div>
+              )}
+              {item.location && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-800/40 border border-violet-600/50 text-sm text-violet-200">
+                  <MapPin className="h-4 w-4 text-violet-400" />
+                  <span>{item.location}</span>
+                </div>
+              )}
+              {item.type && item.type !== 'Buffer' && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-800/40 border border-indigo-600/50 text-sm text-indigo-200">
+                  <Coffee className="h-4 w-4 text-indigo-400" />
+                  <span>{item.type}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Right side decorative element */}
+          <div className="hidden sm:flex flex-col items-center gap-2 text-violet-400/60">
+            <ShieldCheck className="w-6 h-6" />
+            <span className="text-xs font-medium uppercase tracking-wider">Safe</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) {
   if (!items || items.length === 0) return null;
@@ -11,64 +78,77 @@ export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) 
     <div className="border border-blue-900/50 rounded-lg overflow-hidden bg-blue-950/20">
       <button
         onClick={onToggle}
-        className="w-full px-3 py-2 hover:bg-blue-900/20 transition flex items-center justify-between bg-blue-900/30"
+        className="w-full px-4 py-3 hover:bg-blue-900/20 transition flex items-center justify-between bg-blue-900/30"
       >
-        <div className="flex items-center gap-2">
-          <Plane className="h-4 w-4 text-blue-400" />
-          <span className="text-sm font-medium text-blue-200">
+        <div className="flex items-center gap-3">
+          <Plane className="h-5 w-5 text-blue-400" />
+          <span className="text-base font-medium text-blue-200">
             ✈️ Travel <span className="text-blue-500">({items.length})</span>
           </span>
         </div>
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-blue-400" />
+          <ChevronDown className="h-5 w-5 text-blue-400" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-blue-400" />
+          <ChevronRight className="h-5 w-5 text-blue-400" />
         )}
       </button>
 
       {isExpanded && (
-        <div className="divide-y divide-blue-900/30 bg-blue-950/10 slide-down">
+        <div className="divide-y divide-blue-900/30 bg-blue-950/10 slide-down mb-3">
           {items.map((item) => (
-            <div key={item.id} className="px-3 py-3">
-              {/* Split layout: Details on left, Map on right */}
-              <div className="flex gap-4">
-                {/* Left side - Travel details */}
-                <div className="flex-1 min-w-0">
-                  {/* Travel item header */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="font-medium text-blue-100 text-sm">
-                        {item.route}
-                      </div>
-                      {item.flight && (
-                        <div className="text-xs text-blue-400 mt-0.5">
-                          {item.airline} {item.flight}
-                          {item.aircraft && <span> • {item.aircraft}</span>}
+            // Render buffer segments with special styling
+            isBufferSegment(item) ? (
+              <BufferSegmentCard key={item.id} item={item} />
+            ) : (
+            <div key={item.id} className="p-4">
+              {/* 2 Column Layout: Details left (60%), Map right (40%) */}
+              <div className="flex gap-4 min-h-[180px]">
+                {/* LEFT COLUMN - Travel details (60%) */}
+                <div className="w-[60%] min-w-0 flex flex-col justify-between">
+                  {/* Top: Route & Status */}
+                  <div>
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <div className="font-semibold text-blue-100 text-lg">
+                          {item.route}
                         </div>
-                      )}
+                        {item.flight && (
+                          <div className="text-sm text-blue-400 mt-1">
+                            {item.airline} {item.flight}
+                            {item.aircraft && <span className="text-blue-500"> • {item.aircraft}</span>}
+                          </div>
+                        )}
+                      </div>
+                      {item.status && <StatusPill code={item.status} />}
                     </div>
-                    {item.status && <StatusPill code={item.status} />}
                   </div>
 
-                  {/* Flight details grid */}
-                  <div className="flex flex-col gap-1 text-xs text-blue-300">
-                    {item.time && <div>⏰ {item.time}</div>}
-                    {item.duration && <div>⌛ {item.duration}</div>}
-                    {item.departureAirport && (
-                      <div className="truncate">✈️ {item.departureAirport}</div>
+                  {/* Bottom: Flight details in a row */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-blue-300">
+                    {item.time && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-900/40 border border-blue-700/50">
+                        <Clock className="h-4 w-4 text-blue-400" />
+                        <span>{item.time}</span>
+                      </div>
                     )}
-                    {item.arrivalAirport && (
-                      <div className="truncate">📍 {item.arrivalAirport}</div>
+                    {item.duration && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-900/40 border border-blue-700/50">
+                        <Timer className="h-4 w-4 text-blue-400" />
+                        <span>{item.duration}</span>
+                      </div>
                     )}
                     {item.cabinClass && (
-                      <div>💺 {item.cabinClass}</div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-900/40 border border-blue-700/50">
+                        <Armchair className="h-4 w-4 text-blue-400" />
+                        <span>{item.cabinClass}</span>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Right side - Route map */}
+                {/* RIGHT COLUMN - Route map (40%) */}
                 {item.departureAirport && item.arrivalAirport && (
-                  <div className="w-1/2 flex-shrink-0">
+                  <div className="w-[40%] flex-shrink-0">
                     <TravelRouteMap
                       departureAirport={item.departureAirport}
                       arrivalAirport={item.arrivalAirport}
@@ -79,11 +159,32 @@ export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) 
                 )}
               </div>
 
+              {/* Airport details row */}
+              {(item.departureAirport || item.arrivalAirport) && (
+                <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t border-blue-900/30">
+                  {item.departureAirport && (
+                    <div className="flex items-center gap-2 text-sm text-blue-300">
+                      <Plane className="h-4 w-4 text-blue-400 rotate-[-45deg]" />
+                      <span className="text-blue-400 font-medium">From:</span>
+                      <span className="truncate">{item.departureAirport}</span>
+                    </div>
+                  )}
+                  {item.arrivalAirport && (
+                    <div className="flex items-center gap-2 text-sm text-blue-300">
+                      <MapPin className="h-4 w-4 text-blue-400" />
+                      <span className="text-blue-400 font-medium">To:</span>
+                      <span className="truncate">{item.arrivalAirport}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Backup plan */}
               {showBackupPlans && item.backupPlan && (
                 <BackupPlanAccordion backupPlan={item.backupPlan} />
               )}
             </div>
+            )
           ))}
         </div>
       )}

@@ -100,11 +100,11 @@ export function TravelRouteMap({ departureAirport, arrivalAirport, route, type }
   const flightPath = createArcPath(depPosition, arrPosition);
 
   return (
-    <div className="relative w-full h-full min-h-[140px] rounded-lg overflow-hidden">
+    <div className="relative w-full h-full rounded-lg overflow-hidden border border-blue-800/50" style={{ minHeight: '180px' }}>
       {/* Route label */}
-      <div className="absolute top-2 left-2 z-[1000] bg-blue-900/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-blue-700/50 flex items-center gap-1.5">
-        <Plane size={14} className="text-blue-400" />
-        <span className="text-xs font-medium text-blue-200">
+      <div className="absolute top-2 left-2 z-[1000] bg-blue-900/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-blue-700/50 flex items-center gap-2">
+        <Plane size={16} className="text-blue-400" />
+        <span className="text-sm font-medium text-blue-200">
           {route || `${depCode} → ${arrCode}`}
         </span>
       </div>
