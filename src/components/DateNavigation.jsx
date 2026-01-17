@@ -12,6 +12,7 @@
  */
 
 import { memo, useCallback } from "react";
+import { Home } from "lucide-react";
 import { classNames } from "../utils/classNames";
 
 /**
@@ -70,8 +71,30 @@ export const DateNavigation = memo(function DateNavigation({
     }, 50);
   }, [onDateClick]);
 
+  /**
+   * Handles clicking the home button - scrolls to top of page.
+   */
+  const handleHomeClick = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   return (
     <div className="fixed right-4 top-4 bottom-4 z-40 hidden lg:flex flex-col overflow-hidden">
+      {/* Home button */}
+      <button
+        onClick={handleHomeClick}
+        className={classNames(
+          "flex items-center justify-center gap-2 px-3 py-2 mb-2 rounded-lg transition-all duration-200",
+          "bg-zinc-900/80 border border-zinc-800 text-zinc-400",
+          "hover:bg-zinc-800/90 hover:text-zinc-100 hover:border-zinc-600",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+        )}
+        title="Scroll to top"
+      >
+        <Home className="h-4 w-4" />
+        <span className="text-xs font-medium">Home</span>
+      </button>
+      
       {/* Label */}
       <div className="text-xs text-zinc-500 text-center mb-2 font-medium">
         Dates
