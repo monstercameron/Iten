@@ -6,6 +6,7 @@ import { MealsSection } from "./sections/MealsSection";
 import { ActivitiesSection } from "./sections/ActivitiesSection";
 import { DayMetadata } from "./DayMetadata";
 import AddActivityModal from "./AddActivityModal";
+import { MapPreview } from "./MapPreview";
 import { classNames } from "../utils/classNames";
 
 const sectionNames = {
@@ -149,6 +150,18 @@ export function DayCard({
         ? "border-red-700/60 bg-zinc-950/80 shadow-lg shadow-red-900/20"
         : "border-zinc-800/70 bg-zinc-950/60"
     )}>
+      {/* Map Preview - Always visible at top */}
+      {day.shelter?.coordinates && (
+        <div className="relative">
+          <MapPreview
+            coordinates={day.shelter.coordinates}
+            name={day.shelter.name}
+            address={day.shelter.address}
+            type={day.shelter.type}
+          />
+        </div>
+      )}
+
       {/* Day Header */}
       <button
         onClick={onToggle}

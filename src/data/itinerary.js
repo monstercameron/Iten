@@ -217,7 +217,8 @@ function parseItinerary(data = rawItineraryData) {
                 dayOfStay: dateIndex + 1,
                 totalStayDays: segmentDates.length - 1, // Subtract 1 because last day is checkout
                 estimatedCost: segment.estimatedCost || null,
-                currency: segment.currency || null
+                currency: segment.currency || null,
+                coordinates: segment.shelter.coordinates || null
               };
             } else {
               day.shelter = {
@@ -230,7 +231,8 @@ function parseItinerary(data = rawItineraryData) {
                 dayOfStay: dateIndex + 1,
                 totalStayDays: segmentDates.length - 1,
                 estimatedCost: segment.estimatedCost || null,
-                currency: segment.currency || null
+                currency: segment.currency || null,
+                coordinates: null
               };
             }
           }
