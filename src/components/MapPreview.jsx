@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon } from 'leaflet';
-import { MapPin } from 'lucide-react';
+import { MapPin, ExternalLink } from 'lucide-react';
 
 // Fix for default marker icon issue in react-leaflet
 // We'll use a custom marker icon
@@ -14,12 +14,19 @@ const customIcon = new Icon({
   shadowSize: [41, 41]
 });
 
+// Generate Google Maps URL for a location
+function getGoogleMapsUrl(lat, lng, name) {
+  const query = encodeURIComponent(name || `${lat},${lng}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}&center=${lat},${lng}`;
+}
+
 export function MapPreview({ coordinates, name, address, type }) {
   if (!coordinates?.lat || !coordinates?.lng) {
     return null;
   }
 
   const position = [coordinates.lat, coordinates.lng];
+  const mapsUrl = getGoogleMapsUrl(coordinates.lat, coordinates.lng, name || address);
 
   // Determine zoom level based on location type
   const zoomLevel = type === 'Hotel' || type === 'Airbnb' ? 15 : 13;
@@ -44,6 +51,17 @@ export function MapPreview({ coordinates, name, address, type }) {
         </span>
       </div>
 
+      {/* Open in Google Maps button */}
+      <a
+        href={mapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-2 right-2 z-[1000] bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-blue-500/50 flex items-center gap-1.5 transition-colors"
+      >
+        <ExternalLink size={12} className="text-white" />
+        <span className="text-xs font-medium text-white">Open in Maps</span>
+      </a>
+
       <MapContainer
         center={position}
         zoom={zoomLevel}
@@ -67,6 +85,15 @@ export function MapPreview({ coordinates, name, address, type }) {
               {address && (
                 <div className="text-xs text-gray-600 mt-1">{address}</div>
               )}
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <ExternalLink size={10} />
+                Open in Google Maps
+              </a>
             </div>
           </Popup>
         </Marker>

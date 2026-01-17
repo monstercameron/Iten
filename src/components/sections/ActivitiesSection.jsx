@@ -1,5 +1,17 @@
-import { ChevronDown, ChevronRight, MapPin, X } from "lucide-react";
+import { ChevronDown, ChevronRight, MapPin, X, ExternalLink } from "lucide-react";
 import { classNames } from "../../utils/classNames";
+import { ActivityMapPreview } from "../ActivityMapPreview";
+
+// Generate Google Maps URL for a location
+function getGoogleMapsUrl(activity) {
+  if (activity.coordinates?.lat && activity.coordinates?.lng) {
+    const query = encodeURIComponent(activity.location || activity.name);
+    return `https://www.google.com/maps/search/?api=1&query=${query}&center=${activity.coordinates.lat},${activity.coordinates.lng}`;
+  }
+  // Fallback to search by name
+  const query = encodeURIComponent(activity.location || activity.name);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
 
 const priorityStyles = {
   high: "border-l-amber-500 bg-amber-950/20",
@@ -57,77 +69,101 @@ export function ActivitiesSection({
       </button>
 
       {isExpanded && (
-        <div className="divide-y divide-teal-900/30 bg-teal-950/10">
-          {items.map((activity, idx) => (
-            <div 
-              key={activity.id || idx} 
-              className={classNames(
-                "px-3 py-2 border-l-2 relative group",
-                priorityStyles[activity.priority] || priorityStyles.medium,
-                isManualActivity(activity) && "bg-blue-950/10"
-              )}
-            >
-              {/* Remove button for manual activities */}
-              {isManualActivity(activity) && onRemoveActivity && (
-                <button
-                  onClick={() => onRemoveActivity(activity.id)}
-                  className="absolute top-1 right-1 p-1 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Remove activity"
-                >
-                  <X size={12} />
-                </button>
-              )}
-              
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {activity.icon && (
-                      <span className="text-base">{activity.icon}</span>
-                    )}
-                    <span className="text-sm font-medium text-teal-100">
-                      {activity.name}
-                    </span>
-                    {isManualActivity(activity) && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">
-                        Manual
+        <div className="flex flex-col p-3 gap-3">
+          {/* Activity Map - Top half */}
+          <div className="w-full h-[200px]">
+            <ActivityMapPreview activities={items} height={200} />
+          </div>
+          
+          {/* Activity List - Bottom half */}
+          <div className="w-full max-h-[200px] overflow-y-auto divide-y divide-teal-900/30 bg-teal-950/10 rounded-lg">
+            {items.map((activity, idx) => (
+              <div 
+                key={activity.id || idx} 
+                className={classNames(
+                  "px-3 py-2 border-l-2 relative group",
+                  priorityStyles[activity.priority] || priorityStyles.medium,
+                  isManualActivity(activity) && "bg-blue-950/10"
+                )}
+              >
+                {/* Remove button for manual activities */}
+                {isManualActivity(activity) && onRemoveActivity && (
+                  <button
+                    onClick={() => onRemoveActivity(activity.id)}
+                    className="absolute top-1 right-1 p-1 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove activity"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+                
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Activity number badge */}
+                      <span className="text-xs font-bold bg-teal-700/50 text-teal-200 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                        {idx + 1}
                       </span>
-                    )}
-                    {activity.category && (
-                      <span className={classNames(
-                        "text-xs px-1.5 py-0.5 rounded",
-                        categoryColors[activity.category] || "bg-zinc-800 text-zinc-300"
-                      )}>
-                        {activity.category}
+                      {activity.icon && (
+                        <span className="text-sm">{activity.icon}</span>
+                      )}
+                      <span className="text-sm font-medium text-teal-100 truncate">
+                        {activity.name}
                       </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {activity.category && (
+                        <span className={classNames(
+                          "text-xs px-1.5 py-0.5 rounded",
+                          categoryColors[activity.category] || "bg-zinc-800 text-zinc-300"
+                        )}>
+                          {activity.category}
+                        </span>
+                      )}
+                      {isManualActivity(activity) && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">
+                          Manual
+                        </span>
+                      )}
+                    </div>
+                    {activity.location && (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-teal-400 truncate">
+                          📍 {activity.location}
+                        </span>
+                        <a
+                          href={getGoogleMapsUrl(activity)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-0.5 text-xs text-teal-500 hover:text-teal-300 transition-colors flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    )}
+                    {activity.estimatedCost && (
+                      <div className="text-xs text-amber-400 mt-0.5">
+                        💰 {activity.estimatedCost.toLocaleString()} {activity.currency}
+                      </div>
                     )}
                   </div>
-                  {activity.location && (
-                    <div className="text-xs text-teal-400 mt-0.5">
-                      📍 {activity.location}
-                    </div>
-                  )}
-                  {activity.notes && (
-                    <div className="text-xs text-teal-300/70 mt-0.5 italic">
-                      {activity.notes}
-                    </div>
-                  )}
-                  {activity.estimatedCost && (
-                    <div className="text-xs text-amber-400 mt-0.5">
-                      💰 {activity.estimatedCost.toLocaleString()} {activity.currency}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  {(activity.timeStart || activity.time) && (
-                    <div className="text-xs text-teal-400 whitespace-nowrap">
-                      ⏰ {activity.timeStart || activity.time}
-                      {activity.timeEnd && ` - ${activity.timeEnd}`}
-                    </div>
-                  )}
+                  <div className="text-right flex-shrink-0">
+                    {(activity.timeStart || activity.time) && (
+                      <div className="text-xs text-teal-400 whitespace-nowrap">
+                        {activity.timeStart || activity.time}
+                      </div>
+                    )}
+                    {activity.timeEnd && (
+                      <div className="text-xs text-teal-500 whitespace-nowrap">
+                        → {activity.timeEnd}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

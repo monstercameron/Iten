@@ -264,6 +264,8 @@ function parseItinerary(data = rawItineraryData) {
                   name: act.name,
                   location: act.location || segment.location,
                   time: formatTime(act.timeStart, act.timeEnd),
+                  timeStart: act.timeStart,
+                  timeEnd: act.timeEnd,
                   description: act.notes || act.name,
                   type: act.category || segment.type,
                   icon: act.icon,
@@ -271,7 +273,8 @@ function parseItinerary(data = rawItineraryData) {
                   category: act.category,
                   estimatedCost: act.estimatedCost,
                   currency: act.currency,
-                  notes: act.notes
+                  notes: act.notes,
+                  coordinates: act.coordinates || null
                 });
               });
             } else {

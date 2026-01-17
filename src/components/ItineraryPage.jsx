@@ -329,7 +329,7 @@ export function ItineraryPage() {
       </div>
 
       {/* Days list */}
-      <div className="max-w-6xl mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-6">
         {filteredItinerary.map((day) => (
           <DayCard
             key={day.dateKey}

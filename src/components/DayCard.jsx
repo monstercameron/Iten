@@ -145,10 +145,10 @@ export function DayCard({
       id={`day-${day.dateKey}`}
       className={classNames(
         "rounded-2xl border overflow-hidden",
-        isToday && "ring-2 ring-blue-500 ring-offset-2 ring-offset-zinc-950",
+        isToday && "ring-2 ring-blue-500 ring-offset-4 ring-offset-zinc-950",
       day.metadata?.hasUnbooked
-        ? "border-red-700/60 bg-zinc-950/80 shadow-lg shadow-red-900/20"
-        : "border-zinc-800/70 bg-zinc-950/60"
+        ? "border-red-600/80 bg-zinc-900 shadow-lg shadow-red-900/30"
+        : "border-zinc-700 bg-zinc-900"
     )}>
       {/* Map Preview - Always visible at top */}
       {day.shelter?.coordinates && (
@@ -163,55 +163,55 @@ export function DayCard({
       )}
 
       {/* Day Header */}
-      <button
+      <div
         onClick={onToggle}
-        className="w-full px-4 py-3 hover:bg-zinc-900/40 transition flex flex-col gap-2"
+        className="w-full px-5 py-4 hover:bg-zinc-800/50 transition flex flex-col gap-3 cursor-pointer"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 text-left">
             {isExpanded ? (
-              <ChevronDown className="h-5 w-5 text-zinc-400" />
+              <ChevronDown className="h-6 w-6 text-zinc-300" />
             ) : (
-              <ChevronRight className="h-5 w-5 text-zinc-400" />
+              <ChevronRight className="h-6 w-6 text-zinc-300" />
             )}
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-zinc-100">{day.dateDisplay}</span>
+                <span className="font-bold text-lg text-white">{day.dateDisplay}</span>
                 {isToday && (
-                  <span className="px-2 py-0.5 text-xs font-bold bg-blue-600 text-white rounded-full">
+                  <span className="px-2.5 py-1 text-xs font-bold bg-blue-500 text-white rounded-full">
                     TODAY
                   </span>
                 )}
               </div>
-              <div className="text-xs text-zinc-400 mt-0.5">
+              <div className="text-sm text-zinc-300 mt-1">
                 {day.summary}
                 {day.isInFlight && (
-                  <span className="ml-2 text-sky-400">✈️ In Flight</span>
+                  <span className="ml-2 text-sky-400 font-medium">✈️ In Flight</span>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Copy Button */}
             <button
               onClick={handleCopy}
               className={classNames(
-                "p-1.5 rounded-lg border transition-all",
+                "p-2 rounded-lg border transition-all",
                 copied
-                  ? "bg-emerald-900/50 border-emerald-600/50 text-emerald-400"
-                  : "bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-200"
+                  ? "bg-emerald-800/60 border-emerald-500/60 text-emerald-300"
+                  : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:bg-zinc-700 hover:text-white"
               )}
               title={copied ? "Copied!" : "Copy day itinerary"}
             >
               {copied ? (
-                <Check className="h-4 w-4" />
+                <Check className="h-5 w-5" />
               ) : (
-                <Copy className="h-4 w-4" />
+                <Copy className="h-5 w-5" />
               )}
             </button>
             {/* Region Badge */}
             <div className={classNames(
-              "flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold",
               region.bg, region.border, region.text
             )}>
               <span>{region.flag}</span>
@@ -222,11 +222,11 @@ export function DayCard({
 
         {/* Metadata row */}
         <DayMetadata day={day} />
-      </button>
+      </div>
 
       {/* Day Content */}
       {isExpanded && (
-        <div className="border-t border-zinc-800/50 p-4 space-y-4">
+        <div className="border-t border-zinc-700 p-5 space-y-5">
           {/* Travel Section */}
           <TravelSection
             items={day.travel}
