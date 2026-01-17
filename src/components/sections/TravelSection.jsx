@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight, Plane } from "lucide-react";
 import { StatusPill } from "../StatusPill";
+import { TravelRouteMap } from "../TravelRouteMap";
 import { classNames } from "../../utils/classNames";
 
 export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) {
@@ -29,34 +30,52 @@ export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) 
         <div className="divide-y divide-blue-900/30 bg-blue-950/10">
           {items.map((item) => (
             <div key={item.id} className="px-3 py-3">
-              {/* Travel item header */}
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div>
-                  <div className="font-medium text-blue-100 text-sm">
-                    {item.route}
-                  </div>
-                  {item.flight && (
-                    <div className="text-xs text-blue-400 mt-0.5">
-                      {item.airline} {item.flight}
-                      {item.aircraft && <span> • {item.aircraft}</span>}
+              {/* Split layout: Details on left, Map on right */}
+              <div className="flex gap-4">
+                {/* Left side - Travel details */}
+                <div className="flex-1 min-w-0">
+                  {/* Travel item header */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="font-medium text-blue-100 text-sm">
+                        {item.route}
+                      </div>
+                      {item.flight && (
+                        <div className="text-xs text-blue-400 mt-0.5">
+                          {item.airline} {item.flight}
+                          {item.aircraft && <span> • {item.aircraft}</span>}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {item.status && <StatusPill code={item.status} />}
-              </div>
+                    {item.status && <StatusPill code={item.status} />}
+                  </div>
 
-              {/* Flight details grid */}
-              <div className="flex flex-col gap-2 text-xs text-blue-300 mb-2">
-                {item.time && <div>⏰ {item.time}</div>}
-                {item.duration && <div>⌛ {item.duration}</div>}
-                {item.departureAirport && (
-                  <div>✈️ From: {item.departureAirport}</div>
-                )}
-                {item.arrivalAirport && (
-                  <div>📍 To: {item.arrivalAirport}</div>
-                )}
-                {item.cabinClass && (
-                  <div>💺 {item.cabinClass}</div>
+                  {/* Flight details grid */}
+                  <div className="flex flex-col gap-1 text-xs text-blue-300">
+                    {item.time && <div>⏰ {item.time}</div>}
+                    {item.duration && <div>⌛ {item.duration}</div>}
+                    {item.departureAirport && (
+                      <div className="truncate">✈️ {item.departureAirport}</div>
+                    )}
+                    {item.arrivalAirport && (
+                      <div className="truncate">📍 {item.arrivalAirport}</div>
+                    )}
+                    {item.cabinClass && (
+                      <div>💺 {item.cabinClass}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right side - Route map */}
+                {item.departureAirport && item.arrivalAirport && (
+                  <div className="w-1/2 flex-shrink-0">
+                    <TravelRouteMap
+                      departureAirport={item.departureAirport}
+                      arrivalAirport={item.arrivalAirport}
+                      route={item.route}
+                      type={item.type}
+                    />
+                  </div>
                 )}
               </div>
 
