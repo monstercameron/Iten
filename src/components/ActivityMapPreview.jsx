@@ -1,39 +1,30 @@
+/**
+ * @fileoverview Activity map preview component displaying multiple activity
+ * locations with numbered markers and category-based coloring.
+ * 
+ * @description Features include:
+ * - Numbered markers showing activity sequence order
+ * - Category-based marker colors for visual distinction
+ * - Google Maps integration for directions between activities
+ * - Expandable full-screen modal view
+ * - Automatic bounds calculation for multiple markers
+ */
+
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon, DivIcon } from 'leaflet';
 import { MapPin, ExternalLink, Maximize2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { MapModal } from './MapModal';
 
-// Custom numbered marker icons for activities
-const createNumberedIcon = (number, color = '#14b8a6') => {
-  return new DivIcon({
-    html: `
-      <div style="
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 50%;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: bold;
-        color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      ">
-        ${number}
-      </div>
-    `,
-    className: 'custom-numbered-marker',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14]
-  });
-};
+/* ============================================================================
+   MARKER CONFIGURATION
+   ============================================================================ */
 
-// Category to color mapping
-const categoryColors = {
+/**
+ * Category to color mapping for activity markers
+ * @constant {Object.<string, string>}
+ */
+const ACTIVITY_CATEGORY_COLORS = {
   Sports: '#3b82f6',      // blue
   Food: '#f97316',        // orange
   Sightseeing: '#a855f7', // purple
@@ -50,87 +41,198 @@ const categoryColors = {
   Nightlife: '#d946ef',   // fuchsia
 };
 
-// Generate Google Maps URL
-function getGoogleMapsUrl(lat, lng, name) {
-  const query = encodeURIComponent(name || `${lat},${lng}`);
-  return `https://www.google.com/maps/search/?api=1&query=${query}&center=${lat},${lng}`;
-}
+/**
+ * Default fallback color for activities without category mapping
+ * @constant {string}
+ */
+const DEFAULT_MARKER_COLOR = '#14b8a6';
 
-// Generate Google Maps directions URL
-function getGoogleMapsDirectionsUrl(activities) {
+/**
+ * Padding to add around bounds for visual breathing room
+ * @constant {number}
+ */
+const MAP_BOUNDS_PADDING = 0.01;
+
+/* ============================================================================
+   PURE HELPER FUNCTIONS
+   ============================================================================ */
+
+/**
+ * Creates a numbered circular marker icon for activity locations
+ * @pure
+ * @param {number} activitySequenceNumber - The sequence number to display
+ * @param {string} [markerBackgroundColor='#14b8a6'] - Background color for marker
+ * @returns {DivIcon} Leaflet DivIcon with numbered styling
+ */
+const createNumberedActivityMarker = (activitySequenceNumber, markerBackgroundColor = DEFAULT_MARKER_COLOR) => {
+  return new DivIcon({
+    html: `
+      <div style="
+        background-color: ${markerBackgroundColor};
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      ">
+        ${activitySequenceNumber}
+      </div>
+    `,
+    className: 'custom-numbered-marker',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14]
+  });
+};
+
+/**
+ * Generates Google Maps search URL for a single location
+ * @pure
+ * @param {number} latitude - Location latitude
+ * @param {number} longitude - Location longitude
+ * @param {string} [locationName] - Optional name for search query
+ * @returns {string} Google Maps search URL
+ */
+const buildGoogleMapsSearchUrl = (latitude, longitude, locationName) => {
+  const searchQuery = encodeURIComponent(locationName || `${latitude},${longitude}`);
+  return `https://www.google.com/maps/search/?api=1&query=${searchQuery}&center=${latitude},${longitude}`;
+};
+
+/**
+ * Filters activities to only those with valid coordinates
+ * @pure
+ * @param {Array<Object>} activities - Array of activity objects
+ * @returns {Array<Object>} Activities with valid lat/lng coordinates
+ */
+const filterActivitiesWithCoordinates = (activities) => {
+  return activities.filter(activity => 
+    activity.coordinates?.lat && activity.coordinates?.lng
+  );
+};
+
+/**
+ * Generates Google Maps directions URL for a route through multiple activities
+ * @pure
+ * @param {Array<Object>} activities - Array of activity objects with coordinates
+ * @returns {string|null} Google Maps directions URL or null if insufficient activities
+ */
+const buildGoogleMapsDirectionsUrl = (activities) => {
   if (!activities || activities.length < 2) return null;
   
-  const validActivities = activities.filter(a => a.coordinates?.lat && a.coordinates?.lng);
-  if (validActivities.length < 2) return null;
+  const activitiesWithCoordinates = filterActivitiesWithCoordinates(activities);
+  if (activitiesWithCoordinates.length < 2) return null;
   
-  const origin = validActivities[0];
-  const destination = validActivities[validActivities.length - 1];
-  const waypoints = validActivities.slice(1, -1);
+  const originActivity = activitiesWithCoordinates[0];
+  const destinationActivity = activitiesWithCoordinates[activitiesWithCoordinates.length - 1];
+  const waypointActivities = activitiesWithCoordinates.slice(1, -1);
   
-  let url = `https://www.google.com/maps/dir/?api=1`;
-  url += `&origin=${origin.coordinates.lat},${origin.coordinates.lng}`;
-  url += `&destination=${destination.coordinates.lat},${destination.coordinates.lng}`;
+  let directionsUrl = `https://www.google.com/maps/dir/?api=1`;
+  directionsUrl += `&origin=${originActivity.coordinates.lat},${originActivity.coordinates.lng}`;
+  directionsUrl += `&destination=${destinationActivity.coordinates.lat},${destinationActivity.coordinates.lng}`;
   
-  if (waypoints.length > 0) {
-    const waypointStr = waypoints
-      .map(w => `${w.coordinates.lat},${w.coordinates.lng}`)
+  if (waypointActivities.length > 0) {
+    const waypointsString = waypointActivities
+      .map(waypoint => `${waypoint.coordinates.lat},${waypoint.coordinates.lng}`)
       .join('|');
-    url += `&waypoints=${waypointStr}`;
+    directionsUrl += `&waypoints=${waypointsString}`;
   }
   
-  url += `&travelmode=driving`;
-  return url;
-}
+  directionsUrl += `&travelmode=driving`;
+  return directionsUrl;
+};
 
+/**
+ * Calculates map bounds to fit all activity markers with padding
+ * @pure
+ * @param {Array<Object>} activitiesWithCoordinates - Activities with valid coordinates
+ * @returns {Array<Array<number>>} Leaflet bounds array [[minLat, minLng], [maxLat, maxLng]]
+ */
+const calculateMapBoundsFromActivities = (activitiesWithCoordinates) => {
+  const latitudes = activitiesWithCoordinates.map(activity => activity.coordinates.lat);
+  const longitudes = activitiesWithCoordinates.map(activity => activity.coordinates.lng);
+  
+  return [
+    [Math.min(...latitudes) - MAP_BOUNDS_PADDING, Math.min(...longitudes) - MAP_BOUNDS_PADDING],
+    [Math.max(...latitudes) + MAP_BOUNDS_PADDING, Math.max(...longitudes) + MAP_BOUNDS_PADDING]
+  ];
+};
+
+/**
+ * Determines the marker color for an activity based on its category
+ * @pure
+ * @param {string} [category] - Activity category
+ * @returns {string} Hex color code for the marker
+ */
+const getMarkerColorForCategory = (category) => {
+  return ACTIVITY_CATEGORY_COLORS[category] || DEFAULT_MARKER_COLOR;
+};
+
+/* ============================================================================
+   MAIN COMPONENT
+   ============================================================================ */
+
+/**
+ * Compact map preview showing activity locations with numbered markers
+ * 
+ * @component
+ * @param {Object} props
+ * @param {Array<Object>} props.activities - Array of activity objects
+ * @param {number} [props.height=180] - Height of the map preview in pixels
+ * @returns {JSX.Element|null} Map preview or null if no mappable activities
+ */
 export function ActivityMapPreview({ activities, height = 180 }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExpandedModalOpen, setIsExpandedModalOpen] = useState(false);
 
-  // Filter activities that have coordinates
-  const mappableActivities = useMemo(() => {
+  // CRITICAL: Memoize filtered activities with display indices for marker numbering
+  const activitiesWithMappableCoordinates = useMemo(() => {
     return (activities || [])
       .map((activity, index) => ({ ...activity, displayIndex: index + 1 }))
-      .filter(a => a.coordinates?.lat && a.coordinates?.lng);
+      .filter(activity => activity.coordinates?.lat && activity.coordinates?.lng);
   }, [activities]);
 
-  if (mappableActivities.length === 0) {
+  // Early return if no activities can be displayed on map
+  if (activitiesWithMappableCoordinates.length === 0) {
     return null;
   }
 
-  // Calculate bounds to fit all markers
-  const bounds = useMemo(() => {
-    const lats = mappableActivities.map(a => a.coordinates.lat);
-    const lngs = mappableActivities.map(a => a.coordinates.lng);
-    return [
-      [Math.min(...lats) - 0.01, Math.min(...lngs) - 0.01],
-      [Math.max(...lats) + 0.01, Math.max(...lngs) + 0.01]
-    ];
-  }, [mappableActivities]);
+  // CRITICAL: Memoize bounds calculation to prevent recalculation on every render
+  const mapBoundsForActivities = useMemo(() => {
+    return calculateMapBoundsFromActivities(activitiesWithMappableCoordinates);
+  }, [activitiesWithMappableCoordinates]);
 
-  // Use center if only one activity, otherwise use bounds
-  const center = mappableActivities.length === 1 
-    ? [mappableActivities[0].coordinates.lat, mappableActivities[0].coordinates.lng]
+  // Use center point for single activity, bounds for multiple
+  const hasSingleActivity = activitiesWithMappableCoordinates.length === 1;
+  const singleActivityCenter = hasSingleActivity 
+    ? [activitiesWithMappableCoordinates[0].coordinates.lat, activitiesWithMappableCoordinates[0].coordinates.lng]
     : null;
 
-  const directionsUrl = getGoogleMapsDirectionsUrl(mappableActivities);
+  const googleMapsDirectionsUrl = buildGoogleMapsDirectionsUrl(activitiesWithMappableCoordinates);
+  const totalMappableActivitiesCount = activitiesWithMappableCoordinates.length;
 
   return (
     <>
     <div className="relative w-full overflow-hidden rounded-lg border border-teal-900/50" style={{ height: `${height}px` }}>
-      {/* Map Label Overlay */}
+      {/* Map Label Overlay - Activity Count Badge */}
       <div className="absolute top-2 left-2 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-teal-700/50 flex items-center gap-1.5">
         <MapPin size={14} className="text-teal-400" />
         <span className="text-xs font-medium text-teal-200">
-          🎯 Activity Locations ({mappableActivities.length})
+          🎯 Activity Locations ({totalMappableActivitiesCount})
         </span>
       </div>
 
-      {/* Open in Google Maps button - top right */}
-      {directionsUrl && (
+      {/* External Google Maps Directions Link */}
+      {googleMapsDirectionsUrl && (
         <a
-          href={directionsUrl}
+          href={googleMapsDirectionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
           className="absolute top-2 right-2 z-[1000] bg-teal-600/90 hover:bg-teal-500/90 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-teal-500/50 flex items-center gap-1.5 transition-colors"
         >
           <ExternalLink size={12} className="text-white" />
@@ -138,11 +240,11 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         </a>
       )}
 
-      {/* Expand button - bottom right */}
+      {/* Expand to Full-Screen Modal Button */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsModalOpen(true);
+        onClick={(event) => {
+          event.stopPropagation();
+          setIsExpandedModalOpen(true);
         }}
         className="absolute bottom-2 right-2 z-[1000] bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-1.5 rounded-lg border border-zinc-600/50 transition-colors"
         title="Expand map"
@@ -150,9 +252,10 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         <Maximize2 size={14} className="text-white" />
       </button>
 
+      {/* Interactive Map Container */}
       <div style={{ height: '100%', width: '100%' }}>
         <MapContainer
-          {...(center ? { center, zoom: 14 } : { bounds })}
+          {...(singleActivityCenter ? { center: singleActivityCenter, zoom: 14 } : { bounds: mapBoundsForActivities })}
           scrollWheelZoom={false}
           dragging={true}
           zoomControl={false}
@@ -166,11 +269,12 @@ export function ActivityMapPreview({ activities, height = 180 }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
           
-          {mappableActivities.map((activity) => {
-            const position = [activity.coordinates.lat, activity.coordinates.lng];
-            const color = categoryColors[activity.category] || '#14b8a6';
-            const icon = createNumberedIcon(activity.displayIndex, color);
-            const mapsUrl = getGoogleMapsUrl(
+          {/* Render numbered markers for each activity */}
+          {activitiesWithMappableCoordinates.map((activity) => {
+            const markerPosition = [activity.coordinates.lat, activity.coordinates.lng];
+            const markerColor = getMarkerColorForCategory(activity.category);
+            const numberedMarkerIcon = createNumberedActivityMarker(activity.displayIndex, markerColor);
+            const googleMapsLocationUrl = buildGoogleMapsSearchUrl(
               activity.coordinates.lat, 
               activity.coordinates.lng, 
               activity.location || activity.name
@@ -179,8 +283,8 @@ export function ActivityMapPreview({ activities, height = 180 }) {
             return (
               <Marker 
                 key={activity.id || activity.displayIndex} 
-                position={position} 
-                icon={icon}
+                position={markerPosition} 
+                icon={numberedMarkerIcon}
               >
                 <Popup className="custom-popup">
                   <div className="text-sm min-w-[180px]">
@@ -198,7 +302,7 @@ export function ActivityMapPreview({ activities, height = 180 }) {
                       </div>
                     )}
                     <a
-                      href={mapsUrl}
+                      href={googleMapsLocationUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 mt-2 text-xs text-teal-600 hover:text-teal-700 font-medium"
@@ -214,14 +318,14 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         </MapContainer>
       </div>
 
-      {/* Gradient overlay for aesthetics */}
+      {/* Gradient overlay for visual aesthetics */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-zinc-950/30 via-transparent to-transparent z-[500]" />
     </div>
 
-    {/* Expanded Map Modal */}
+    {/* Expanded Full-Screen Map Modal */}
     <MapModal
-      isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
+      isOpen={isExpandedModalOpen}
+      onClose={() => setIsExpandedModalOpen(false)}
       type="activities"
       data={{ activities }}
     />

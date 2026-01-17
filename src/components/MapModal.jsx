@@ -1,10 +1,29 @@
+/**
+ * @fileoverview Full-screen map modal component for displaying shelter locations
+ * and activity routes with numbered markers and polyline connections.
+ * 
+ * @description Features include:
+ * - Full-screen modal with dark theme map tiles
+ * - Numbered activity markers with category-based colors
+ * - Polyline route visualization between activities
+ * - Google Maps integration for external navigation
+ * - Automatic map bounds calculation for multiple markers
+ */
+
 import { X, MapPin, ExternalLink } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Icon, DivIcon } from 'leaflet';
 import { useEffect } from 'react';
 
-// Custom marker icon
-const defaultIcon = new Icon({
+/* ============================================================================
+   MARKER ICON CONFIGURATION
+   ============================================================================ */
+
+/**
+ * Default Leaflet marker icon configuration for shelter locations
+ * @constant {Icon}
+ */
+const DEFAULT_MARKER_ICON = new Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -14,36 +33,11 @@ const defaultIcon = new Icon({
   shadowSize: [41, 41]
 });
 
-// Numbered marker for activities
-const createNumberedIcon = (number, color = '#14b8a6') => {
-  return new DivIcon({
-    html: `
-      <div style="
-        background-color: ${color};
-        border: 3px solid white;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: bold;
-        color: white;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-      ">
-        ${number}
-      </div>
-    `,
-    className: 'custom-numbered-marker',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18]
-  });
-};
-
-// Category colors for activities
-const categoryColors = {
+/**
+ * Color mapping for activity categories displayed on map markers
+ * @constant {Object.<string, string>}
+ */
+const ACTIVITY_CATEGORY_MARKER_COLORS = {
   Sports: '#3b82f6',
   Food: '#f97316',
   Sightseeing: '#a855f7',
@@ -60,8 +54,196 @@ const categoryColors = {
   Nightlife: '#d946ef',
 };
 
+/**
+ * Route polyline styling configuration
+ * @constant {Object}
+ */
+const ROUTE_POLYLINE_STYLE = {
+  color: '#14b8a6',
+  weight: 3,
+  opacity: 0.6,
+  dashArray: '10, 10'
+};
+
+/* ============================================================================
+   PURE HELPER FUNCTIONS
+   ============================================================================ */
+
+/**
+ * Creates a numbered circular marker icon for activity locations
+ * @pure
+ * @param {number} activityNumber - The sequence number to display on the marker
+ * @param {string} [markerColor='#14b8a6'] - Background color for the marker circle
+ * @returns {DivIcon} Leaflet DivIcon with numbered styling
+ */
+const createNumberedActivityMarkerIcon = (activityNumber, markerColor = '#14b8a6') => {
+  return new DivIcon({
+    html: `
+      <div style="
+        background-color: ${markerColor};
+        border: 3px solid white;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+        color: white;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+      ">
+        ${activityNumber}
+      </div>
+    `,
+    className: 'custom-numbered-marker',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18]
+  });
+};
+
+/**
+ * Calculates appropriate zoom level based on geographic spread of markers
+ * @pure
+ * @param {number} latitudeSpread - Difference between max and min latitudes
+ * @param {number} longitudeSpread - Difference between max and min longitudes
+ * @returns {number} Zoom level (12-14)
+ */
+const calculateZoomLevelFromSpread = (latitudeSpread, longitudeSpread) => {
+  const maximumSpread = Math.max(latitudeSpread, longitudeSpread);
+  if (maximumSpread > 0.1) return 12;
+  if (maximumSpread > 0.05) return 13;
+  return 14;
+};
+
+/**
+ * Calculates the center point from an array of coordinates
+ * @pure
+ * @param {Array<{lat: number, lng: number}>} coordinates - Array of coordinate objects
+ * @returns {{center: [number, number], zoom: number}} Center point and calculated zoom
+ */
+const calculateMapCenterFromCoordinates = (coordinates) => {
+  if (coordinates.length === 0) {
+    return { center: [0, 0], zoom: 14 };
+  }
+
+  const latitudes = coordinates.map(coord => coord.lat);
+  const longitudes = coordinates.map(coord => coord.lng);
+
+  const centerLatitude = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+  const centerLongitude = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+
+  const latitudeSpread = Math.max(...latitudes) - Math.min(...latitudes);
+  const longitudeSpread = Math.max(...longitudes) - Math.min(...longitudes);
+  const calculatedZoom = calculateZoomLevelFromSpread(latitudeSpread, longitudeSpread);
+
+  return {
+    center: [centerLatitude, centerLongitude],
+    zoom: calculatedZoom
+  };
+};
+
+/**
+ * Filters activities to only those with valid coordinates
+ * @pure
+ * @param {Array<Object>} activities - Array of activity objects
+ * @returns {Array<Object>} Activities with valid lat/lng coordinates
+ */
+const filterActivitiesWithValidCoordinates = (activities) => {
+  return activities.filter(activity => 
+    activity.coordinates?.lat && activity.coordinates?.lng
+  );
+};
+
+/**
+ * Transforms activity data into marker data format
+ * @pure
+ * @param {Array<Object>} validActivities - Activities with valid coordinates
+ * @returns {Array<Object>} Marker data array
+ */
+const transformActivitiesToMarkerData = (validActivities) => {
+  return validActivities.map((activity, index) => ({
+    position: [activity.coordinates.lat, activity.coordinates.lng],
+    name: activity.name,
+    location: activity.location,
+    category: activity.category,
+    time: activity.timeStart || activity.time,
+    index: index + 1
+  }));
+};
+
+/**
+ * Builds Google Maps URL for a shelter location
+ * @pure
+ * @param {Object} shelterData - Shelter data with coordinates and name
+ * @returns {string} Google Maps search URL
+ */
+const buildShelterGoogleMapsUrl = (shelterData) => {
+  const searchQuery = encodeURIComponent(
+    shelterData.name || `${shelterData.coordinates.lat},${shelterData.coordinates.lng}`
+  );
+  return `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+};
+
+/**
+ * Builds Google Maps directions URL for multiple activity markers
+ * @pure
+ * @param {Array<Object>} markers - Array of marker objects with position arrays
+ * @returns {string|null} Google Maps directions URL or null if insufficient markers
+ */
+const buildActivitiesDirectionsUrl = (markers) => {
+  if (markers.length < 2) return null;
+
+  const originMarker = markers[0];
+  const destinationMarker = markers[markers.length - 1];
+
+  let directionsUrl = `https://www.google.com/maps/dir/?api=1`;
+  directionsUrl += `&origin=${originMarker.position[0]},${originMarker.position[1]}`;
+  directionsUrl += `&destination=${destinationMarker.position[0]},${destinationMarker.position[1]}`;
+
+  // Add intermediate waypoints if more than 2 markers
+  if (markers.length > 2) {
+    const waypointMarkers = markers.slice(1, -1);
+    const waypointsString = waypointMarkers
+      .map(marker => `${marker.position[0]},${marker.position[1]}`)
+      .join('|');
+    directionsUrl += `&waypoints=${waypointsString}`;
+  }
+
+  return directionsUrl;
+};
+
+/* ============================================================================
+   MAIN COMPONENT
+   ============================================================================ */
+
+/**
+ * @typedef {Object} ShelterData
+ * @property {string} [name] - Name of the shelter/accommodation
+ * @property {string} [address] - Street address
+ * @property {string} [type] - Type of accommodation
+ * @property {{lat: number, lng: number}} [coordinates] - Location coordinates
+ */
+
+/**
+ * @typedef {Object} ActivitiesData
+ * @property {Array<Object>} activities - Array of activity objects with coordinates
+ */
+
+/**
+ * Full-screen map modal for displaying shelter locations or activity routes
+ * 
+ * @component
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Whether the modal is visible
+ * @param {Function} props.onClose - Callback to close the modal
+ * @param {'shelter'|'activities'} props.type - Type of map content to display
+ * @param {ShelterData|ActivitiesData} props.data - Location data to display on map
+ * @returns {JSX.Element|null} Map modal or null if not open
+ */
 export function MapModal({ isOpen, onClose, type, data }) {
-  // Prevent body scroll when modal is open
+  // CRITICAL: Prevent body scroll when modal is open for proper UX
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -71,77 +253,63 @@ export function MapModal({ isOpen, onClose, type, data }) {
     };
   }, [isOpen]);
 
+  // Early return if modal is closed - skip all map calculations
   if (!isOpen) return null;
 
-  const isShelter = type === 'shelter';
-  const isActivities = type === 'activities';
+  const isShelterMapType = type === 'shelter';
+  const isActivitiesMapType = type === 'activities';
 
-  // Get center and markers based on type
-  let center = [0, 0];
-  let zoom = 14;
-  let markers = [];
+  // Initialize map state with defaults
+  let mapCenterCoordinates = [0, 0];
+  let mapZoomLevel = 14;
+  let mapMarkerData = [];
 
-  if (isShelter && data?.coordinates) {
-    center = [data.coordinates.lat, data.coordinates.lng];
-    zoom = 15;
-    markers = [{
-      position: center,
+  // CRITICAL: Calculate map center and markers based on content type
+  if (isShelterMapType && data?.coordinates) {
+    // Single shelter location - center on coordinates with higher zoom
+    mapCenterCoordinates = [data.coordinates.lat, data.coordinates.lng];
+    mapZoomLevel = 15;
+    mapMarkerData = [{
+      position: mapCenterCoordinates,
       name: data.name,
       address: data.address,
       type: data.type
     }];
   }
 
-  if (isActivities && data?.activities) {
-    const validActivities = data.activities.filter(a => a.coordinates?.lat && a.coordinates?.lng);
-    if (validActivities.length > 0) {
-      // Calculate bounds
-      const lats = validActivities.map(a => a.coordinates.lat);
-      const lngs = validActivities.map(a => a.coordinates.lng);
-      center = [
-        (Math.min(...lats) + Math.max(...lats)) / 2,
-        (Math.min(...lngs) + Math.max(...lngs)) / 2
-      ];
+  if (isActivitiesMapType && data?.activities) {
+    // Multiple activities - calculate bounds and center
+    const activitiesWithValidCoordinates = filterActivitiesWithValidCoordinates(data.activities);
+    
+    if (activitiesWithValidCoordinates.length > 0) {
+      const coordinates = activitiesWithValidCoordinates.map(a => a.coordinates);
+      const { center, zoom } = calculateMapCenterFromCoordinates(coordinates);
       
-      // Adjust zoom based on spread
-      const latSpread = Math.max(...lats) - Math.min(...lats);
-      const lngSpread = Math.max(...lngs) - Math.min(...lngs);
-      const maxSpread = Math.max(latSpread, lngSpread);
-      if (maxSpread > 0.1) zoom = 12;
-      else if (maxSpread > 0.05) zoom = 13;
-      else zoom = 14;
-
-      markers = validActivities.map((activity, idx) => ({
-        position: [activity.coordinates.lat, activity.coordinates.lng],
-        name: activity.name,
-        location: activity.location,
-        category: activity.category,
-        time: activity.timeStart || activity.time,
-        index: idx + 1
-      }));
+      mapCenterCoordinates = center;
+      mapZoomLevel = zoom;
+      mapMarkerData = transformActivitiesToMarkerData(activitiesWithValidCoordinates);
     }
   }
 
-  const getGoogleMapsUrl = () => {
-    if (isShelter && data?.coordinates) {
-      const query = encodeURIComponent(data.name || `${data.coordinates.lat},${data.coordinates.lng}`);
-      return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  /**
+   * Generates appropriate Google Maps URL based on map type
+   * @returns {string|null} Google Maps URL or null if not applicable
+   */
+  const getExternalGoogleMapsUrl = () => {
+    if (isShelterMapType && data?.coordinates) {
+      return buildShelterGoogleMapsUrl(data);
     }
-    if (isActivities && markers.length > 1) {
-      // Directions URL
-      const origin = markers[0];
-      const dest = markers[markers.length - 1];
-      let url = `https://www.google.com/maps/dir/?api=1`;
-      url += `&origin=${origin.position[0]},${origin.position[1]}`;
-      url += `&destination=${dest.position[0]},${dest.position[1]}`;
-      if (markers.length > 2) {
-        const waypoints = markers.slice(1, -1).map(m => `${m.position[0]},${m.position[1]}`).join('|');
-        url += `&waypoints=${waypoints}`;
-      }
-      return url;
+    if (isActivitiesMapType && mapMarkerData.length > 1) {
+      return buildActivitiesDirectionsUrl(mapMarkerData);
     }
     return null;
   };
+
+  const externalMapsUrl = getExternalGoogleMapsUrl();
+  const modalHeaderTitle = isShelterMapType 
+    ? (data?.name || 'Shelter Location') 
+    : `Activity Locations (${mapMarkerData.length})`;
+  const shouldShowRoutePolyline = isActivitiesMapType && mapMarkerData.length > 1;
 
   return (
     <div 
@@ -150,20 +318,20 @@ export function MapModal({ isOpen, onClose, type, data }) {
     >
       <div 
         className="relative w-full max-w-5xl h-[90vh] md:h-[80vh] bg-zinc-900 rounded-xl md:rounded-2xl border border-zinc-700 overflow-hidden shadow-2xl"
-        onClick={e => e.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
-        {/* Header */}
+        {/* Modal Header with Title and Actions */}
         <div className="absolute top-0 left-0 right-0 z-[1001] bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
             <MapPin className="h-4 w-4 md:h-5 md:w-5 text-blue-400 flex-shrink-0" />
             <span className="text-sm md:text-lg font-semibold text-white truncate">
-              {isShelter ? (data?.name || 'Shelter Location') : `Activity Locations (${markers.length})`}
+              {modalHeaderTitle}
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {getGoogleMapsUrl() && (
+            {externalMapsUrl && (
               <a
-                href={getGoogleMapsUrl()}
+                href={externalMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
@@ -184,11 +352,11 @@ export function MapModal({ isOpen, onClose, type, data }) {
           </div>
         </div>
 
-        {/* Map */}
+        {/* Interactive Map Container */}
         <div className="w-full h-full pt-12 md:pt-14">
           <MapContainer
-            center={center}
-            zoom={zoom}
+            center={mapCenterCoordinates}
+            zoom={mapZoomLevel}
             scrollWheelZoom={true}
             dragging={true}
             zoomControl={true}
@@ -200,35 +368,39 @@ export function MapModal({ isOpen, onClose, type, data }) {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             />
             
-            {markers.map((marker, idx) => {
-              const icon = isActivities 
-                ? createNumberedIcon(marker.index, categoryColors[marker.category] || '#14b8a6')
-                : defaultIcon;
+            {/* Render markers for each location */}
+            {mapMarkerData.map((markerItem, markerIndex) => {
+              const markerIcon = isActivitiesMapType 
+                ? createNumberedActivityMarkerIcon(
+                    markerItem.index, 
+                    ACTIVITY_CATEGORY_MARKER_COLORS[markerItem.category] || '#14b8a6'
+                  )
+                : DEFAULT_MARKER_ICON;
               
               return (
-                <Marker key={idx} position={marker.position} icon={icon}>
+                <Marker key={markerIndex} position={markerItem.position} icon={markerIcon}>
                   <Popup>
                     <div className="text-sm">
-                      <div className="font-semibold text-zinc-900">{marker.name}</div>
-                      {marker.location && <div className="text-zinc-600">{marker.location}</div>}
-                      {marker.address && <div className="text-zinc-600">{marker.address}</div>}
-                      {marker.time && <div className="text-zinc-500 mt-1">🕐 {marker.time}</div>}
-                      {marker.category && <div className="text-zinc-500">{marker.category}</div>}
-                      {marker.type && <div className="text-zinc-500">{marker.type}</div>}
+                      <div className="font-semibold text-zinc-900">{markerItem.name}</div>
+                      {markerItem.location && <div className="text-zinc-600">{markerItem.location}</div>}
+                      {markerItem.address && <div className="text-zinc-600">{markerItem.address}</div>}
+                      {markerItem.time && <div className="text-zinc-500 mt-1">🕐 {markerItem.time}</div>}
+                      {markerItem.category && <div className="text-zinc-500">{markerItem.category}</div>}
+                      {markerItem.type && <div className="text-zinc-500">{markerItem.type}</div>}
                     </div>
                   </Popup>
                 </Marker>
               );
             })}
 
-            {/* Draw lines between activities */}
-            {isActivities && markers.length > 1 && (
+            {/* Route polyline connecting activities in sequence */}
+            {shouldShowRoutePolyline && (
               <Polyline
-                positions={markers.map(m => m.position)}
-                color="#14b8a6"
-                weight={3}
-                opacity={0.6}
-                dashArray="10, 10"
+                positions={mapMarkerData.map(marker => marker.position)}
+                color={ROUTE_POLYLINE_STYLE.color}
+                weight={ROUTE_POLYLINE_STYLE.weight}
+                opacity={ROUTE_POLYLINE_STYLE.opacity}
+                dashArray={ROUTE_POLYLINE_STYLE.dashArray}
               />
             )}
           </MapContainer>
