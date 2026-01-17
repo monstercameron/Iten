@@ -25,7 +25,7 @@ export function ItineraryPage() {
     updateActivity: dbUpdateActivity,
     removeActivity: dbRemoveActivity,
     deleteOriginalActivity: dbDeleteOriginal,
-    performImport,
+    importJsonData,
     completeSetup
   } = useItineraryDB();
   
@@ -249,7 +249,7 @@ export function ItineraryPage() {
     return (
       <SetupWizard 
         onComplete={completeSetup}
-        onImport={performImport}
+        onImportJson={importJsonData}
       />
     );
   }

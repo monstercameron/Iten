@@ -1,21 +1,92 @@
-import { useState } from 'react';
-import { Upload, Database, CheckCircle2, Loader2, AlertCircle, Plane, MapPin, Calendar } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Upload, Database, CheckCircle2, Loader2, AlertCircle, Plane, MapPin, Calendar, FileJson, FileUp } from 'lucide-react';
 import { classNames } from '../utils/classNames';
 
 /**
- * Setup Wizard Modal - Shown on first launch to import JSON data to IndexedDB
+ * Setup Wizard Modal - Shown on first launch to upload and import JSON data to IndexedDB
  */
-export function SetupWizard({ onComplete, onImport }) {
-  const [step, setStep] = useState(1); // 1: Welcome, 2: Importing, 3: Complete
+export function SetupWizard({ onComplete, onImportJson }) {
+  const [step, setStep] = useState(1); // 1: Upload, 2: Importing, 3: Complete
   const [error, setError] = useState(null);
   const [importStats, setImportStats] = useState(null);
+  const [jsonData, setJsonData] = useState(null);
+  const [fileName, setFileName] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
+  // Validate JSON structure
+  const validateJson = (data) => {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid JSON structure');
+    }
+    if (!data.trips || !Array.isArray(data.trips)) {
+      throw new Error('JSON must contain a "trips" array');
+    }
+    return true;
+  };
+
+  // Handle file selection
+  const handleFile = async (file) => {
+    setError(null);
+    
+    if (!file) return;
+    
+    if (!file.name.endsWith('.json')) {
+      setError('Please upload a JSON file');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      validateJson(data);
+      setJsonData(data);
+      setFileName(file.name);
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        setError('Invalid JSON format. Please check your file.');
+      } else {
+        setError(err.message);
+      }
+    }
+  };
+
+  // Handle file input change
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  // Start import
   const handleStartImport = async () => {
+    if (!jsonData) {
+      setError('Please upload a JSON file first');
+      return;
+    }
+
     setStep(2);
     setError(null);
     
     try {
-      const stats = await onImport();
+      const stats = await onImportJson(jsonData);
       setImportStats(stats);
       setStep(3);
     } catch (err) {
@@ -40,18 +111,18 @@ export function SetupWizard({ onComplete, onImport }) {
           <div className="relative">
             <div className="flex justify-center mb-3">
               <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
-                {step === 1 && <Database className="h-8 w-8 text-white" />}
+                {step === 1 && <Upload className="h-8 w-8 text-white" />}
                 {step === 2 && <Loader2 className="h-8 w-8 text-white animate-spin" />}
                 {step === 3 && <CheckCircle2 className="h-8 w-8 text-white" />}
               </div>
             </div>
             <h2 className="text-2xl font-bold text-white mb-1">
-              {step === 1 && "Welcome! 🎉"}
+              {step === 1 && "Upload Itinerary 📁"}
               {step === 2 && "Setting Up..."}
               {step === 3 && "All Set! ✨"}
             </h2>
             <p className="text-white/80 text-sm">
-              {step === 1 && "Let's get your travel itinerary ready"}
+              {step === 1 && "Import your travel itinerary JSON file"}
               {step === 2 && "Importing your trip data"}
               {step === 3 && "Your itinerary is ready to go"}
             </p>
@@ -60,21 +131,70 @@ export function SetupWizard({ onComplete, onImport }) {
 
         {/* Content */}
         <div className="p-6">
-          {/* Step 1: Welcome */}
+          {/* Step 1: Upload */}
           {step === 1 && (
             <div className="space-y-4">
               <p className="text-zinc-300 text-sm leading-relaxed">
-                This app stores your travel itinerary locally in your browser for fast access and offline viewing.
+                Upload your travel itinerary JSON file to get started. Your data stays private and is stored only in your browser.
               </p>
               
+              {/* File Upload Area */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={classNames(
+                  "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                  isDragging 
+                    ? "border-blue-500 bg-blue-500/10" 
+                    : jsonData 
+                      ? "border-emerald-500 bg-emerald-500/10"
+                      : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50"
+                )}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                
+                {jsonData ? (
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-500/20 rounded-full">
+                      <FileJson className="h-6 w-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-emerald-400 font-medium">{fileName}</p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {jsonData.trips?.length || 0} trips found • Click to change
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-800 rounded-full">
+                      <FileUp className="h-6 w-6 text-zinc-400" />
+                    </div>
+                    <div>
+                      <p className="text-zinc-300 font-medium">Drop your JSON file here</p>
+                      <p className="text-xs text-zinc-500 mt-1">or click to browse</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
               <div className="bg-zinc-800/50 rounded-xl p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-500/20 rounded-lg shrink-0">
                     <Database className="h-4 w-4 text-blue-400" />
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-zinc-200">Local Storage</div>
-                    <div className="text-xs text-zinc-400">Data stays on your device</div>
+                    <div className="text-sm font-medium text-zinc-200">Private & Local</div>
+                    <div className="text-xs text-zinc-400">Data never leaves your device</div>
                   </div>
                 </div>
                 
@@ -83,18 +203,8 @@ export function SetupWizard({ onComplete, onImport }) {
                     <Calendar className="h-4 w-4 text-emerald-400" />
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-zinc-200">Custom Activities</div>
-                    <div className="text-xs text-zinc-400">Add your own plans anytime</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg shrink-0">
-                    <Plane className="h-4 w-4 text-purple-400" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-zinc-200">Offline Ready</div>
-                    <div className="text-xs text-zinc-400">Access your trip without internet</div>
+                    <div className="text-sm font-medium text-zinc-200">Add Activities</div>
+                    <div className="text-xs text-zinc-400">Customize your plans anytime</div>
                   </div>
                 </div>
               </div>
@@ -108,15 +218,17 @@ export function SetupWizard({ onComplete, onImport }) {
 
               <button
                 onClick={handleStartImport}
-                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
+                disabled={!jsonData}
+                className={classNames(
+                  "w-full py-3 px-4 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2",
+                  jsonData
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/25"
+                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                )}
               >
                 <Upload className="h-4 w-4" />
-                Set Up My Itinerary
+                Import Itinerary
               </button>
-              
-              <p className="text-xs text-zinc-500 text-center">
-                This only takes a moment
-              </p>
             </div>
           )}
 

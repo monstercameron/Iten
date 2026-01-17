@@ -12,7 +12,6 @@ import {
   removeActivity,
   markActivityDeleted
 } from './indexedDB';
-import rawItineraryData from '../data/rawItinerary.json';
 
 /**
  * Hook to manage IndexedDB data for the travel itinerary
@@ -41,7 +40,7 @@ export function useItineraryDB() {
         const initialized = await isDataInitialized();
 
         if (!initialized) {
-          // Show setup wizard
+          // Show setup wizard - user needs to upload JSON
           console.log('🆕 First launch detected - showing setup wizard');
           setNeedsSetup(true);
           setIsLoading(false);
@@ -55,10 +54,7 @@ export function useItineraryDB() {
       } catch (err) {
         console.error('❌ IndexedDB initialization error:', err);
         setError(err.message);
-        
-        // Fallback to raw JSON data
-        setItineraryData(rawItineraryData);
-        setIsReady(true);
+        setNeedsSetup(true);
         setIsLoading(false);
       }
     }
@@ -79,22 +75,22 @@ export function useItineraryDB() {
     setIsLoading(false);
   };
 
-  // Import JSON data to IndexedDB (called from setup wizard)
-  const performImport = useCallback(async () => {
+  // Import user-provided JSON data to IndexedDB (called from setup wizard)
+  const importJsonData = useCallback(async (jsonData) => {
     try {
-      console.log('🚀 Importing JSON data to IndexedDB...');
+      console.log('🚀 Importing user JSON data to IndexedDB...');
       
-      // Import the raw itinerary data
-      await importItineraryData(rawItineraryData);
+      // Import the provided JSON data
+      await importItineraryData(jsonData);
       await markInitialized();
       
       console.log('✅ Data import complete!');
       
       // Calculate stats for the wizard
       const stats = {
-        trips: rawItineraryData.trips?.length || 0,
-        segments: rawItineraryData.trips?.reduce((acc, trip) => acc + (trip.segments?.length || 0), 0) || 0,
-        days: calculateTripDays(rawItineraryData)
+        trips: jsonData.trips?.length || 0,
+        segments: jsonData.trips?.reduce((acc, trip) => acc + (trip.segments?.length || 0), 0) || 0,
+        days: calculateTripDays(jsonData)
       };
       
       // Load the data
@@ -184,7 +180,7 @@ export function useItineraryDB() {
     updateActivity: updateExistingActivity,
     removeActivity: removeManualActivity,
     deleteOriginalActivity,
-    performImport,
+    importJsonData,
     completeSetup
   };
 }
