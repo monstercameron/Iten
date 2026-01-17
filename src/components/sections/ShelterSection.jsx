@@ -1,9 +1,25 @@
-import { ChevronDown, ChevronRight, Building2, MapPin, Home, Clock, Calendar, StickyNote } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Building2, MapPin, Home, Clock, Calendar, StickyNote, Copy, Check } from "lucide-react";
 import { classNames } from "../../utils/classNames";
 import { MapPreview } from "../MapPreview";
 
 export function ShelterSection({ shelter, isExpanded, onToggle }) {
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
   if (!shelter || Object.keys(shelter).length === 0) return null;
+
+  const handleCopyAddress = async (e) => {
+    e.stopPropagation();
+    if (shelter.address) {
+      try {
+        await navigator.clipboard.writeText(shelter.address);
+        setCopiedAddress(true);
+        setTimeout(() => setCopiedAddress(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy address:', err);
+      }
+    }
+  };
 
   return (
     <div className="border border-purple-900/50 rounded-lg overflow-hidden bg-purple-950/20">
@@ -41,6 +57,18 @@ export function ShelterSection({ shelter, isExpanded, onToggle }) {
                       <div className="flex items-center gap-2 text-sm text-purple-300 mt-1">
                         <MapPin className="h-4 w-4 text-purple-400" />
                         <span>{shelter.address}</span>
+                        <button
+                          onClick={handleCopyAddress}
+                          className={classNames(
+                            "p-1 rounded transition-colors",
+                            copiedAddress
+                              ? "text-emerald-400"
+                              : "text-purple-400 hover:text-purple-200 hover:bg-purple-800/50"
+                          )}
+                          title={copiedAddress ? "Copied!" : "Copy address"}
+                        >
+                          {copiedAddress ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
                     )}
                   </div>

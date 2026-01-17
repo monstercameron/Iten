@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon } from 'leaflet';
-import { MapPin, ExternalLink, Maximize2 } from 'lucide-react';
+import { MapPin, ExternalLink, Maximize2, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import { MapModal } from './MapModal';
 
@@ -24,6 +24,7 @@ function getGoogleMapsUrl(lat, lng, name) {
 
 export function MapPreview({ coordinates, name, address, type }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   if (!coordinates?.lat || !coordinates?.lng) {
     return null;
@@ -42,6 +43,20 @@ export function MapPreview({ coordinates, name, address, type }) {
       case 'Airbnb': return '🏠';
       case 'Personal residence': return '🏡';
       default: return '📍';
+    }
+  };
+
+  const handleCopyAddress = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (address) {
+      try {
+        await navigator.clipboard.writeText(address);
+        setCopiedAddress(true);
+        setTimeout(() => setCopiedAddress(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy address:', err);
+      }
     }
   };
 
@@ -67,6 +82,22 @@ export function MapPreview({ coordinates, name, address, type }) {
           <ExternalLink size={16} className="text-white" />
           <span className="text-sm font-medium text-white">Open in Maps</span>
         </a>
+
+        {/* Copy address button - bottom left */}
+        {address && (
+          <button
+            onClick={handleCopyAddress}
+            className={`absolute bottom-3 left-3 z-[1000] backdrop-blur-sm px-3 py-2 rounded-lg border flex items-center gap-2 transition-colors ${
+              copiedAddress
+                ? "bg-emerald-600/90 border-emerald-500/50"
+                : "bg-zinc-800/90 hover:bg-zinc-700/90 border-zinc-600/50"
+            }`}
+            title={copiedAddress ? "Copied!" : "Copy address"}
+          >
+            {copiedAddress ? <Check size={16} className="text-white" /> : <Copy size={16} className="text-white" />}
+            <span className="text-sm font-medium text-white">{copiedAddress ? "Copied!" : "Copy Address"}</span>
+          </button>
+        )}
 
         {/* Expand button - bottom right */}
         <button

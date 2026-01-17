@@ -172,9 +172,35 @@ export function ItineraryPage() {
         }
       }
       
+      // Aggregate costs from existing activities
+      day.activities?.forEach(activity => {
+        if (activity.estimatedCost && activity.currency) {
+          const activityId = activity.id || `activity-${day.dateKey}-${activity.name}`;
+          // Skip if this activity was deleted
+          if (deletedActivities[day.dateKey]?.includes(activityId)) return;
+          if (!countedSegments.has(activityId)) {
+            countedSegments.add(activityId);
+            const currency = activity.currency;
+            costByCurrency[currency] = (costByCurrency[currency] || 0) + activity.estimatedCost;
+            totalUSD += activity.estimatedCost * (exchangeRates[currency] || 1);
+          }
+        }
+      });
+      
       if (day.metadata?.unbootedCount) {
         totalUnbooked += day.metadata.unbootedCount;
       }
+    });
+    
+    // Aggregate costs from manual activities
+    Object.entries(manualActivities).forEach(([dateKey, activities]) => {
+      activities.forEach(activity => {
+        if (activity.estimatedCost && activity.currency) {
+          const currency = activity.currency;
+          costByCurrency[currency] = (costByCurrency[currency] || 0) + activity.estimatedCost;
+          totalUSD += activity.estimatedCost * (exchangeRates[currency] || 1);
+        }
+      });
     });
     
     const budget = TRIP_BUDGET.total || 3500;
@@ -182,7 +208,7 @@ export function ItineraryPage() {
     const percentUsed = (totalUSD / budget) * 100;
     
     return { costByCurrency, totalUnbooked, totalUSD, budget, remaining, percentUsed };
-  }, []);
+  }, [manualActivities, deletedActivities]);
 
   // Format currency display
   const formatCosts = (costByCurrency) => {

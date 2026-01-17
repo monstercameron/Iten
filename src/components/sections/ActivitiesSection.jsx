@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, MapPin, X, ExternalLink, Clock, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, MapPin, X, ExternalLink, Clock, DollarSign, Pencil, Trash2, Copy, Check } from "lucide-react";
 import { classNames } from "../../utils/classNames";
 import { ActivityMapPreview } from "../ActivityMapPreview";
 import DeleteConfirmModal from "../DeleteConfirmModal";
@@ -47,11 +47,25 @@ export function ActivitiesSection({
   onEditActivity
 }) {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, activity: null });
+  const [copiedLocation, setCopiedLocation] = useState(null);
 
   if (!items || items.length === 0) return null;
 
   const isManualActivity = (activity) => {
     return manualActivityIds.includes(activity.id);
+  };
+
+  const handleCopyLocation = async (e, activity) => {
+    e.stopPropagation();
+    if (activity.location) {
+      try {
+        await navigator.clipboard.writeText(activity.location);
+        setCopiedLocation(activity.id);
+        setTimeout(() => setCopiedLocation(null), 2000);
+      } catch (err) {
+        console.error('Failed to copy location:', err);
+      }
+    }
   };
 
   return (
@@ -178,11 +192,23 @@ export function ActivitiesSection({
                       <span className="text-sm text-teal-300 truncate">
                         {activity.location}
                       </span>
+                      <button
+                        onClick={(e) => handleCopyLocation(e, activity)}
+                        className={classNames(
+                          "p-1 rounded transition-colors flex-shrink-0",
+                          copiedLocation === activity.id
+                            ? "text-emerald-400"
+                            : "text-teal-500 hover:text-teal-300 hover:bg-teal-800/50"
+                        )}
+                        title={copiedLocation === activity.id ? "Copied!" : "Copy location"}
+                      >
+                        {copiedLocation === activity.id ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
                       <a
                         href={getGoogleMapsUrl(activity)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-teal-500 hover:text-teal-300 transition-colors flex-shrink-0 ml-1"
+                        className="inline-flex items-center gap-1 text-sm text-teal-500 hover:text-teal-300 transition-colors flex-shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <ExternalLink size={14} />
