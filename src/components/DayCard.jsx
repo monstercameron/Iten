@@ -231,9 +231,9 @@ export function DayCard({
           <DayMetadata day={day} />
         </div>
 
-        {/* RIGHT COLUMN - Map */}
+        {/* RIGHT COLUMN - Map (40%) */}
         {day.shelter?.coordinates && (
-          <div className="w-[400px] flex-shrink-0">
+          <div className="w-[40%] flex-shrink-0">
             <MapPreview
               coordinates={day.shelter.coordinates}
               name={day.shelter.name}
