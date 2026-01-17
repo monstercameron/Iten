@@ -26,16 +26,17 @@ body {
 
 .slide-down {
   animation: slideDown 150ms ease-out forwards;
-  overflow: hidden;
 }
 
 @keyframes slideDown {
   from {
     max-height: 0;
     opacity: 0;
+    overflow: hidden;
   }
   to {
-    max-height: 1000px;
+    max-height: 2000px;
     opacity: 1;
+    overflow: visible;
   }
 }

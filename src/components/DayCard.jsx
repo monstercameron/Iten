@@ -144,7 +144,7 @@ export function DayCard({
     <div 
       id={`day-${day.dateKey}`}
       className={classNames(
-        "rounded-2xl border overflow-hidden",
+        "rounded-2xl border",
         isToday && "ring-2 ring-blue-500 ring-offset-4 ring-offset-zinc-950",
       day.metadata?.hasUnbooked
         ? "border-red-600/80 bg-zinc-900 shadow-lg shadow-red-900/30"
