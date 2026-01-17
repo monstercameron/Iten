@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, Eye, EyeOff, DollarSign, AlertCircle, Wallet, TrendingDown, Loader2 } from "lucide-react";
 import { parseItineraryData, getTripMeta, ITINERARY_DAYS as FALLBACK_DAYS, TRIP_BUDGET as FALLBACK_BUDGET, TRIP_NAME as FALLBACK_NAME } from "../data/itinerary";
 import { useItineraryDB } from "../db";
+import { clearAllData } from "../db/indexedDB";
 import { DayCard } from "./DayCard";
 import { SetupWizard } from "./SetupWizard";
 import { classNames } from "../utils/classNames";
@@ -26,7 +27,8 @@ export function ItineraryPage() {
     removeActivity: dbRemoveActivity,
     deleteOriginalActivity: dbDeleteOriginal,
     importJsonData,
-    completeSetup
+    completeSetup,
+    resetDatabase
   } = useItineraryDB();
   
   // Parse the itinerary data from IndexedDB (or fallback)
@@ -239,6 +241,17 @@ export function ItineraryPage() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
           <p className="text-zinc-400">Loading your itinerary...</p>
+          <button
+            onClick={async () => {
+              if (confirm('Reset all data and start fresh?')) {
+                await clearAllData();
+                window.location.reload();
+              }
+            }}
+            className="mt-4 px-4 py-2 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-lg transition-colors"
+          >
+            Reset Data
+          </button>
         </div>
       </div>
     );
@@ -250,6 +263,7 @@ export function ItineraryPage() {
       <SetupWizard 
         onComplete={completeSetup}
         onImportJson={importJsonData}
+        onReset={resetDatabase}
       />
     );
   }
@@ -277,8 +291,23 @@ export function ItineraryPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6">
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2">✈️ {TRIP_NAME}</h1>
-        <p className="text-sm md:text-base text-zinc-400 mb-4 md:mb-6">Jan 30 – Feb 16, 2026</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2">✈️ {TRIP_NAME}</h1>
+            <p className="text-sm md:text-base text-zinc-400 mb-4 md:mb-6">Jan 30 – Feb 16, 2026</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (confirm('Reset all data? You will need to upload your JSON file again.')) {
+                await clearAllData();
+                window.location.reload();
+              }
+            }}
+            className="px-3 py-1.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-lg transition-colors border border-zinc-800 hover:border-red-500/30"
+          >
+            Reset
+          </button>
+        </div>
 
         {/* Budget Tracker Widget */}
         <div className="bg-zinc-900/80 border border-zinc-700 rounded-xl md:rounded-2xl p-4 md:p-5 mb-4 md:mb-6">

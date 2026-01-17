@@ -10,7 +10,8 @@ import {
   addActivity,
   updateActivity,
   removeActivity,
-  markActivityDeleted
+  markActivityDeleted,
+  clearAllData
 } from './indexedDB';
 
 /**
@@ -49,7 +50,33 @@ export function useItineraryDB() {
 
         // Data already initialized - load from IndexedDB
         console.log('📂 Loading data from IndexedDB...');
-        await loadDataFromDB();
+        
+        // Load data inline since we can't call the external function
+        try {
+          const data = await getItineraryData();
+          const activities = await getAllManualActivities();
+          const deleted = await getAllDeletedActivities();
+
+          // If data is null/empty after being marked initialized, show setup wizard
+          if (!data || !data.trips || data.trips.length === 0) {
+            console.warn('⚠️ No itinerary data found, showing setup wizard');
+            setNeedsSetup(true);
+            setIsLoading(false);
+            return;
+          }
+
+          setItineraryData(data);
+          setManualActivities(activities);
+          setDeletedActivities(deleted);
+          setIsReady(true);
+          setIsLoading(false);
+          console.log('✅ Data loaded from IndexedDB');
+        } catch (loadErr) {
+          console.error('❌ Failed to load data from IndexedDB:', loadErr);
+          setError(loadErr.message);
+          setNeedsSetup(true);
+          setIsLoading(false);
+        }
         
       } catch (err) {
         console.error('❌ IndexedDB initialization error:', err);
@@ -62,17 +89,32 @@ export function useItineraryDB() {
     initialize();
   }, []);
 
-  // Load data from IndexedDB
+  // Load data from IndexedDB (used for refresh after import)
   const loadDataFromDB = async () => {
-    const data = await getItineraryData();
-    const activities = await getAllManualActivities();
-    const deleted = await getAllDeletedActivities();
+    try {
+      const data = await getItineraryData();
+      const activities = await getAllManualActivities();
+      const deleted = await getAllDeletedActivities();
 
-    setItineraryData(data);
-    setManualActivities(activities);
-    setDeletedActivities(deleted);
-    setIsReady(true);
-    setIsLoading(false);
+      // If data is null/empty after being marked initialized, show setup wizard
+      if (!data || !data.trips || data.trips.length === 0) {
+        console.warn('⚠️ No itinerary data found, showing setup wizard');
+        setNeedsSetup(true);
+        setIsLoading(false);
+        return;
+      }
+
+      setItineraryData(data);
+      setManualActivities(activities);
+      setDeletedActivities(deleted);
+      setIsReady(true);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('❌ Failed to load data from IndexedDB:', err);
+      setError(err.message);
+      setNeedsSetup(true);
+      setIsLoading(false);
+    }
   };
 
   // Import user-provided JSON data to IndexedDB (called from setup wizard)
@@ -93,8 +135,16 @@ export function useItineraryDB() {
         days: calculateTripDays(jsonData)
       };
       
-      // Load the data
-      await loadDataFromDB();
+      // Load the data directly (don't call loadDataFromDB to avoid stale closure)
+      const data = await getItineraryData();
+      const activities = await getAllManualActivities();
+      const deleted = await getAllDeletedActivities();
+      
+      setItineraryData(data);
+      setManualActivities(activities);
+      setDeletedActivities(deleted);
+      setIsReady(true);
+      setIsLoading(false);
       setNeedsSetup(false);
       
       return stats;
@@ -168,6 +218,26 @@ export function useItineraryDB() {
     }
   }, []);
 
+  // Reset the database - clear all data and show setup wizard
+  const resetDatabase = useCallback(async () => {
+    try {
+      console.log('🗑️ Resetting database...');
+      await clearAllData();
+      
+      // Reset all state
+      setItineraryData(null);
+      setManualActivities({});
+      setDeletedActivities({});
+      setIsReady(false);
+      setNeedsSetup(true);
+      
+      console.log('✅ Database reset complete');
+    } catch (err) {
+      console.error('❌ Failed to reset database:', err);
+      throw err;
+    }
+  }, []);
+
   return {
     isLoading,
     isReady,
@@ -181,7 +251,8 @@ export function useItineraryDB() {
     removeActivity: removeManualActivity,
     deleteOriginalActivity,
     importJsonData,
-    completeSetup
+    completeSetup,
+    resetDatabase
   };
 }
 

@@ -1,17 +1,75 @@
 import { useState, useRef } from 'react';
-import { Upload, Database, CheckCircle2, Loader2, AlertCircle, Plane, MapPin, Calendar, FileJson, FileUp } from 'lucide-react';
+import { Upload, Database, CheckCircle2, Loader2, AlertCircle, Plane, MapPin, Calendar, FileJson, FileUp, Trash2, X } from 'lucide-react';
 import { classNames } from '../utils/classNames';
+
+/**
+ * Confirmation Dialog for Reset
+ */
+function ResetConfirmDialog({ isOpen, onConfirm, onCancel, isResetting }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="p-3 bg-red-500/20 rounded-full">
+              <Trash2 className="h-8 w-8 text-red-400" />
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-white mb-2">Reset All Data?</h3>
+            <p className="text-zinc-400 text-sm">
+              This will permanently delete all your itinerary data from this browser. 
+              You'll need to upload your JSON file again.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onCancel}
+              disabled={isResetting}
+              className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isResetting}
+              className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Reset
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Setup Wizard Modal - Shown on first launch to upload and import JSON data to IndexedDB
  */
-export function SetupWizard({ onComplete, onImportJson }) {
+export function SetupWizard({ onComplete, onImportJson, onReset }) {
   const [step, setStep] = useState(1); // 1: Upload, 2: Importing, 3: Complete
   const [error, setError] = useState(null);
   const [importStats, setImportStats] = useState(null);
   const [jsonData, setJsonData] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const fileInputRef = useRef(null);
 
   // Validate JSON structure
@@ -58,18 +116,28 @@ export function SetupWizard({ onComplete, onImportJson }) {
   };
 
   // Handle drag and drop
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
   const handleDragOver = (e) => {
     e.preventDefault();
-    setIsDragging(true);
+    e.stopPropagation();
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging false if we're leaving the drop zone itself
+    if (e.currentTarget.contains(e.relatedTarget)) return;
     setIsDragging(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
@@ -92,6 +160,27 @@ export function SetupWizard({ onComplete, onImportJson }) {
     } catch (err) {
       setError(err.message);
       setStep(1);
+    }
+  };
+
+  // Handle reset confirmation
+  const handleResetConfirm = async () => {
+    if (!onReset) return;
+    
+    setIsResetting(true);
+    try {
+      await onReset();
+      // Reset wizard state
+      setStep(1);
+      setJsonData(null);
+      setFileName(null);
+      setImportStats(null);
+      setError(null);
+      setShowResetConfirm(false);
+    } catch (err) {
+      setError('Failed to reset: ' + err.message);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -141,6 +230,7 @@ export function SetupWizard({ onComplete, onImportJson }) {
               {/* File Upload Area */}
               <div
                 onClick={() => fileInputRef.current?.click()}
+                onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -300,7 +390,7 @@ export function SetupWizard({ onComplete, onImportJson }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-4">
+        <div className="px-6 pb-4 space-y-3">
           <div className="flex justify-center gap-2">
             {[1, 2, 3].map(s => (
               <div
@@ -312,8 +402,27 @@ export function SetupWizard({ onComplete, onImportJson }) {
               />
             ))}
           </div>
+          
+          {/* Reset button - only show if onReset is provided */}
+          {onReset && (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full py-2 px-3 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="h-3 w-3" />
+              Reset All Data
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Reset Confirmation Dialog */}
+      <ResetConfirmDialog
+        isOpen={showResetConfirm}
+        onConfirm={handleResetConfirm}
+        onCancel={() => setShowResetConfirm(false)}
+        isResetting={isResetting}
+      />
     </div>
   );
 }

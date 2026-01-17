@@ -1,18 +1,39 @@
 /**
  * IndexedDB wrapper for Travel Itinerary App
  * Stores all trip data persistently in the browser
+ * 
+ * DATA STRUCTURE:
+ * ===============
+ * 
+ * tripMeta (single record):
+ *   { id: 'main', tripName, budget: { total, currency }, travelers: [] }
+ * 
+ * trips (keyed by trip name):
+ *   { name, region, segments: [...] }
+ *   - Each segment contains: id, date, dateEnd?, type, details, shelter?, activities?, etc.
+ * 
+ * userActivities (keyed by date):
+ *   { date: 'YYYY-MM-DD', items: [{ id, name, time, location, ... }] }
+ *   - User-added activities that don't exist in original JSON
+ * 
+ * deletedActivities (keyed by date):
+ *   { date: 'YYYY-MM-DD', ids: ['seg-001-activity-1', ...] }
+ *   - IDs of original activities user has deleted
+ * 
+ * settings:
+ *   { key: 'initialized', value: true, timestamp }
  */
 
 const DB_NAME = 'TravelItineraryDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped version for schema changes
 
 // Store names
 const STORES = {
-  TRIP_META: 'tripMeta',      // Trip name, budget, travelers
-  TRIPS: 'trips',             // All trip data with segments
-  ACTIVITIES: 'activities',    // User-added activities (by date)
-  DELETED: 'deleted',         // Deleted activity IDs
-  SETTINGS: 'settings'        // App settings
+  TRIP_META: 'tripMeta',           // Trip name, budget, travelers
+  TRIPS: 'trips',                  // All trip data with segments (flights, shelters, original activities)
+  USER_ACTIVITIES: 'userActivities', // User-added activities (by date)
+  DELETED_ACTIVITIES: 'deletedActivities', // Deleted original activity IDs (by date)
+  SETTINGS: 'settings'             // App settings
 };
 
 let db = null;
@@ -42,34 +63,46 @@ export function initDB() {
 
     request.onupgradeneeded = (event) => {
       const database = event.target.result;
-      console.log('📦 Creating IndexedDB stores...');
+      const oldVersion = event.oldVersion;
+      console.log(`📦 Upgrading IndexedDB from v${oldVersion} to v${DB_VERSION}...`);
+
+      // Delete old stores if upgrading from v1
+      if (oldVersion < 2) {
+        if (database.objectStoreNames.contains('activities')) {
+          database.deleteObjectStore('activities');
+        }
+        if (database.objectStoreNames.contains('deleted')) {
+          database.deleteObjectStore('deleted');
+        }
+      }
 
       // Trip metadata store (single record)
       if (!database.objectStoreNames.contains(STORES.TRIP_META)) {
         database.createObjectStore(STORES.TRIP_META, { keyPath: 'id' });
       }
 
-      // Trips store (array of trip objects)
+      // Trips store - contains full trip data including segments with flights, shelters, activities
       if (!database.objectStoreNames.contains(STORES.TRIPS)) {
         const tripsStore = database.createObjectStore(STORES.TRIPS, { keyPath: 'name' });
         tripsStore.createIndex('region', 'region', { unique: false });
       }
 
-      // Activities store (keyed by date)
-      if (!database.objectStoreNames.contains(STORES.ACTIVITIES)) {
-        const activitiesStore = database.createObjectStore(STORES.ACTIVITIES, { keyPath: 'date' });
-        activitiesStore.createIndex('date', 'date', { unique: true });
+      // User activities store - activities added by user (keyed by date)
+      if (!database.objectStoreNames.contains(STORES.USER_ACTIVITIES)) {
+        database.createObjectStore(STORES.USER_ACTIVITIES, { keyPath: 'date' });
       }
 
-      // Deleted activities store
-      if (!database.objectStoreNames.contains(STORES.DELETED)) {
-        database.createObjectStore(STORES.DELETED, { keyPath: 'date' });
+      // Deleted activities store - IDs of original activities user has removed
+      if (!database.objectStoreNames.contains(STORES.DELETED_ACTIVITIES)) {
+        database.createObjectStore(STORES.DELETED_ACTIVITIES, { keyPath: 'date' });
       }
 
       // Settings store
       if (!database.objectStoreNames.contains(STORES.SETTINGS)) {
         database.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
       }
+      
+      console.log('✅ IndexedDB stores created/updated');
     };
   });
 }
@@ -108,13 +141,15 @@ export async function markInitialized() {
 
 /**
  * Import JSON data into IndexedDB (first-time setup)
+ * Stores: tripMeta, trips (with all segments including flights/shelters/activities)
+ * Initializes empty userActivities and deletedActivities for each date
  */
 export async function importItineraryData(jsonData) {
   await initDB();
   
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(
-      [STORES.TRIP_META, STORES.TRIPS, STORES.ACTIVITIES, STORES.DELETED],
+      [STORES.TRIP_META, STORES.TRIPS, STORES.USER_ACTIVITIES, STORES.DELETED_ACTIVITIES],
       'readwrite'
     );
 
@@ -128,32 +163,45 @@ export async function importItineraryData(jsonData) {
     const metaStore = transaction.objectStore(STORES.TRIP_META);
     metaStore.put({
       id: 'main',
-      tripName: jsonData.tripName,
-      budget: jsonData.budget,
-      travelers: jsonData.travelers
+      tripName: jsonData.tripName || 'My Trip',
+      budget: jsonData.budget || { total: 0, currency: 'USD' },
+      travelers: jsonData.travelers || []
     });
 
-    // Store trips
+    // Store trips with all their segments (flights, shelters, activities, etc.)
     const tripsStore = transaction.objectStore(STORES.TRIPS);
-    jsonData.trips.forEach(trip => {
-      tripsStore.put(trip);
+    (jsonData.trips || []).forEach(trip => {
+      tripsStore.put({
+        name: trip.name,
+        region: trip.region,
+        segments: trip.segments || []
+      });
     });
 
-    // Initialize empty activities and deleted stores for each date
-    const activitiesStore = transaction.objectStore(STORES.ACTIVITIES);
-    const deletedStore = transaction.objectStore(STORES.DELETED);
+    // Initialize empty user activities and deleted activities for each date
+    const userActivitiesStore = transaction.objectStore(STORES.USER_ACTIVITIES);
+    const deletedStore = transaction.objectStore(STORES.DELETED_ACTIVITIES);
     
     // Extract all unique dates from segments
     const dates = new Set();
-    jsonData.trips.forEach(trip => {
-      trip.segments.forEach(segment => {
+    (jsonData.trips || []).forEach(trip => {
+      (trip.segments || []).forEach(segment => {
         if (segment.date) dates.add(segment.date);
-        if (segment.dateEnd) dates.add(segment.dateEnd);
+        if (segment.dateEnd) {
+          // Add all dates in range
+          const start = new Date(segment.date);
+          const end = new Date(segment.dateEnd);
+          const current = new Date(start);
+          while (current <= end) {
+            dates.add(current.toISOString().split('T')[0]);
+            current.setDate(current.getDate() + 1);
+          }
+        }
       });
     });
 
     dates.forEach(date => {
-      activitiesStore.put({ date, items: [] });
+      userActivitiesStore.put({ date, items: [] });
       deletedStore.put({ date, ids: [] });
     });
   });
@@ -207,13 +255,13 @@ export async function getItineraryData() {
 }
 
 /**
- * Get activities for a specific date
+ * Get user-added activities for a specific date
  */
-export async function getActivitiesForDate(date) {
+export async function getUserActivitiesForDate(date) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.ACTIVITIES], 'readonly');
-    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const transaction = db.transaction([STORES.USER_ACTIVITIES], 'readonly');
+    const store = transaction.objectStore(STORES.USER_ACTIVITIES);
     const request = store.get(date);
 
     request.onsuccess = () => resolve(request.result?.items || []);
@@ -222,13 +270,13 @@ export async function getActivitiesForDate(date) {
 }
 
 /**
- * Add activity to a date
+ * Add a user activity to a date
  */
 export async function addActivity(date, activity) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.ACTIVITIES], 'readwrite');
-    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const transaction = db.transaction([STORES.USER_ACTIVITIES], 'readwrite');
+    const store = transaction.objectStore(STORES.USER_ACTIVITIES);
     const getRequest = store.get(date);
 
     getRequest.onsuccess = () => {
@@ -243,13 +291,13 @@ export async function addActivity(date, activity) {
 }
 
 /**
- * Update activity for a date
+ * Update a user activity for a date
  */
 export async function updateActivity(date, activityId, updates) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.ACTIVITIES], 'readwrite');
-    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const transaction = db.transaction([STORES.USER_ACTIVITIES], 'readwrite');
+    const store = transaction.objectStore(STORES.USER_ACTIVITIES);
     const getRequest = store.get(date);
 
     getRequest.onsuccess = () => {
@@ -267,13 +315,13 @@ export async function updateActivity(date, activityId, updates) {
 }
 
 /**
- * Remove activity from a date
+ * Remove a user activity from a date
  */
 export async function removeActivity(date, activityId) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.ACTIVITIES], 'readwrite');
-    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const transaction = db.transaction([STORES.USER_ACTIVITIES], 'readwrite');
+    const store = transaction.objectStore(STORES.USER_ACTIVITIES);
     const getRequest = store.get(date);
 
     getRequest.onsuccess = () => {
@@ -293,8 +341,8 @@ export async function removeActivity(date, activityId) {
 export async function getDeletedForDate(date) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.DELETED], 'readonly');
-    const store = transaction.objectStore(STORES.DELETED);
+    const transaction = db.transaction([STORES.DELETED_ACTIVITIES], 'readonly');
+    const store = transaction.objectStore(STORES.DELETED_ACTIVITIES);
     const request = store.get(date);
 
     request.onsuccess = () => resolve(request.result?.ids || []);
@@ -303,13 +351,13 @@ export async function getDeletedForDate(date) {
 }
 
 /**
- * Mark activity as deleted
+ * Mark an original activity as deleted (soft delete)
  */
 export async function markActivityDeleted(date, activityId) {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.DELETED], 'readwrite');
-    const store = transaction.objectStore(STORES.DELETED);
+    const transaction = db.transaction([STORES.DELETED_ACTIVITIES], 'readwrite');
+    const store = transaction.objectStore(STORES.DELETED_ACTIVITIES);
     const getRequest = store.get(date);
 
     getRequest.onsuccess = () => {
@@ -326,13 +374,13 @@ export async function markActivityDeleted(date, activityId) {
 }
 
 /**
- * Get all manual activities (for all dates)
+ * Get all user-added activities (for all dates)
  */
 export async function getAllManualActivities() {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.ACTIVITIES], 'readonly');
-    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const transaction = db.transaction([STORES.USER_ACTIVITIES], 'readonly');
+    const store = transaction.objectStore(STORES.USER_ACTIVITIES);
     const request = store.getAll();
 
     request.onsuccess = () => {
@@ -354,8 +402,8 @@ export async function getAllManualActivities() {
 export async function getAllDeletedActivities() {
   await initDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.DELETED], 'readonly');
-    const store = transaction.objectStore(STORES.DELETED);
+    const transaction = db.transaction([STORES.DELETED_ACTIVITIES], 'readonly');
+    const store = transaction.objectStore(STORES.DELETED_ACTIVITIES);
     const request = store.getAll();
 
     request.onsuccess = () => {
@@ -408,7 +456,7 @@ export async function clearAllData() {
   await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(
-      [STORES.TRIP_META, STORES.TRIPS, STORES.ACTIVITIES, STORES.DELETED, STORES.SETTINGS],
+      [STORES.TRIP_META, STORES.TRIPS, STORES.USER_ACTIVITIES, STORES.DELETED_ACTIVITIES, STORES.SETTINGS],
       'readwrite'
     );
 
@@ -420,8 +468,8 @@ export async function clearAllData() {
 
     transaction.objectStore(STORES.TRIP_META).clear();
     transaction.objectStore(STORES.TRIPS).clear();
-    transaction.objectStore(STORES.ACTIVITIES).clear();
-    transaction.objectStore(STORES.DELETED).clear();
+    transaction.objectStore(STORES.USER_ACTIVITIES).clear();
+    transaction.objectStore(STORES.DELETED_ACTIVITIES).clear();
     transaction.objectStore(STORES.SETTINGS).clear();
   });
 }
