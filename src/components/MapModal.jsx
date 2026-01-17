@@ -145,44 +145,47 @@ export function MapModal({ isOpen, onClose, type, data }) {
 
   return (
     <div 
-      className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-2 md:p-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-5xl h-[80vh] bg-zinc-900 rounded-2xl border border-zinc-700 overflow-hidden shadow-2xl"
+        className="relative w-full max-w-5xl h-[90vh] md:h-[80vh] bg-zinc-900 rounded-xl md:rounded-2xl border border-zinc-700 overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-[1001] bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-700 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-blue-400" />
-            <span className="text-lg font-semibold text-white">
+        <div className="absolute top-0 left-0 right-0 z-[1001] bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <MapPin className="h-4 w-4 md:h-5 md:w-5 text-blue-400 flex-shrink-0" />
+            <span className="text-sm md:text-lg font-semibold text-white truncate">
               {isShelter ? (data?.name || 'Shelter Location') : `Activity Locations (${markers.length})`}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {getGoogleMapsUrl() && (
               <a
                 href={getGoogleMapsUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
               >
-                <ExternalLink size={16} />
-                Open in Google Maps
+                <ExternalLink size={14} className="md:hidden" />
+                <ExternalLink size={16} className="hidden md:block" />
+                <span className="hidden sm:inline">Open in Google Maps</span>
+                <span className="sm:hidden">Maps</span>
               </a>
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              className="p-1.5 md:p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
             >
-              <X size={20} />
+              <X size={18} className="md:hidden" />
+              <X size={20} className="hidden md:block" />
             </button>
           </div>
         </div>
 
         {/* Map */}
-        <div className="w-full h-full pt-14">
+        <div className="w-full h-full pt-12 md:pt-14">
           <MapContainer
             center={center}
             zoom={zoom}

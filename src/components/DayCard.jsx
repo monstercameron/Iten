@@ -164,42 +164,42 @@ export function DayCard({
     <div 
       id={`day-${day.dateKey}`}
       className={classNames(
-        "rounded-2xl border",
-        isToday && "ring-2 ring-blue-500 ring-offset-4 ring-offset-zinc-950",
+        "rounded-xl md:rounded-2xl border",
+        isToday && "ring-2 ring-blue-500 ring-offset-2 md:ring-offset-4 ring-offset-zinc-950",
       day.metadata?.hasUnbooked
         ? "border-red-600/80 bg-zinc-900 shadow-lg shadow-red-900/30"
         : "border-zinc-700 bg-zinc-900"
     )}>
-      {/* Day Header - 2 Column Layout (60:40) */}
+      {/* Day Header - Responsive Layout: Stack on mobile, 2-col on desktop */}
       <div
         onClick={onToggle}
-        className="flex cursor-pointer hover:bg-zinc-800/30 transition min-h-[400px]"
+        className="flex flex-col md:flex-row cursor-pointer hover:bg-zinc-800/30 transition md:min-h-[400px]"
       >
-        {/* LEFT COLUMN - Info & Tags (60%) */}
-        <div className="w-[60%] p-8 flex flex-col justify-between">
+        {/* LEFT COLUMN - Info & Tags */}
+        <div className="w-full md:w-[60%] p-4 md:p-8 flex flex-col justify-between">
           {/* Top section: chevron, date, today badge, copy, region */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between mb-3 md:mb-0">
+            <div className="flex items-center gap-2 md:gap-4">
               {isExpanded ? (
-                <ChevronDown className="h-9 w-9 text-zinc-300" />
+                <ChevronDown className="h-6 w-6 md:h-9 md:w-9 text-zinc-300" />
               ) : (
-                <ChevronRight className="h-9 w-9 text-zinc-300" />
+                <ChevronRight className="h-6 w-6 md:h-9 md:w-9 text-zinc-300" />
               )}
-              <div className="flex items-center gap-4">
-                <span className="font-bold text-2xl text-white">{day.dateDisplay}</span>
+              <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+                <span className="font-bold text-lg md:text-2xl text-white">{day.dateDisplay}</span>
                 {isToday && (
-                  <span className="px-4 py-2 text-base font-bold bg-blue-500 text-white rounded-full">
+                  <span className="px-2 py-1 md:px-4 md:py-2 text-xs md:text-base font-bold bg-blue-500 text-white rounded-full">
                     TODAY
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               {/* Copy Button */}
               <button
                 onClick={handleCopy}
                 className={classNames(
-                  "p-3 rounded-lg border transition-all",
+                  "p-2 md:p-3 rounded-lg border transition-all",
                   copied
                     ? "bg-emerald-800/60 border-emerald-500/60 text-emerald-300"
                     : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:bg-zinc-700 hover:text-white"
@@ -207,24 +207,24 @@ export function DayCard({
                 title={copied ? "Copied!" : "Copy day itinerary"}
               >
                 {copied ? (
-                  <Check className="h-5 w-5" />
+                  <Check className="h-4 w-4 md:h-5 md:w-5" />
                 ) : (
-                  <Copy className="h-5 w-5" />
+                  <Copy className="h-4 w-4 md:h-5 md:w-5" />
                 )}
               </button>
               {/* Region Badge */}
               <div className={classNames(
-                "flex items-center gap-2 px-4 py-2 rounded-lg border text-base font-semibold",
+                "flex items-center gap-1.5 md:gap-2 px-2 py-1 md:px-4 md:py-2 rounded-lg border text-xs md:text-base font-semibold",
                 region.bg, region.border, region.text
               )}>
-                <span className="text-lg">{region.flag}</span>
-                <span>{day.timezone}</span>
+                <span className="text-sm md:text-lg">{region.flag}</span>
+                <span className="hidden sm:inline">{day.timezone}</span>
               </div>
             </div>
           </div>
 
           {/* Middle section: Summary */}
-          <div className="text-lg text-zinc-300">
+          <div className="text-sm md:text-lg text-zinc-300 my-3 md:my-0">
             {day.summary}
             {day.isInFlight && (
               <span className="ml-2 text-sky-400 font-medium">✈️ In Flight</span>
@@ -235,9 +235,9 @@ export function DayCard({
           <DayMetadata day={day} />
         </div>
 
-        {/* RIGHT COLUMN - Map (40%) */}
+        {/* RIGHT COLUMN - Map (40%) - hidden on mobile, shown on desktop */}
         {day.shelter?.coordinates && (
-          <div className="w-[40%] flex-shrink-0">
+          <div className="hidden md:block w-[40%] flex-shrink-0">
             <MapPreview
               coordinates={day.shelter.coordinates}
               name={day.shelter.name}
@@ -250,7 +250,7 @@ export function DayCard({
 
       {/* Day Content */}
       {isExpanded && (
-        <div className="border-t border-zinc-700 p-5 space-y-5 slide-down">
+        <div className="border-t border-zinc-700 p-3 md:p-5 space-y-3 md:space-y-5 slide-down">
           {/* Travel Section */}
           <TravelSection
             items={day.travel}
@@ -288,9 +288,9 @@ export function DayCard({
           {/* Add Activity Button */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="w-full py-2 px-4 border-2 border-dashed border-zinc-700 hover:border-blue-500 rounded-xl text-zinc-400 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2 px-3 md:px-4 border-2 border-dashed border-zinc-700 hover:border-blue-500 rounded-xl text-sm md:text-base text-zinc-400 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
           >
-            <Plus size={18} />
+            <Plus size={16} className="md:w-[18px] md:h-[18px]" />
             Add Activity
           </button>
         </div>

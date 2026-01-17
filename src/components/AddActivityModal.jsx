@@ -106,19 +106,19 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[3000] p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[3000] p-2 md:p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-md max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+        <div className="flex items-center justify-between p-3 md:p-4 border-b border-zinc-700 sticky top-0 bg-zinc-900 z-10">
+          <h2 className="text-base md:text-lg font-semibold text-white flex items-center gap-2">
             {isEditMode ? (
               <>
-                <Save size={20} className="text-amber-400" />
+                <Save size={18} className="text-amber-400" />
                 Edit Activity
               </>
             ) : (
               <>
-                <Plus size={20} className="text-blue-400" />
+                <Plus size={18} className="text-blue-400" />
                 Add Activity
               </>
             )}
@@ -132,10 +132,10 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-3 md:p-4 space-y-3 md:space-y-4">
           {/* Activity Name */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
               Activity Name *
             </label>
             <input
@@ -145,14 +145,14 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
               onChange={handleChange}
               required
               placeholder="e.g., Visit Senso-ji Temple"
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Time Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 Start Time
               </label>
               <input
@@ -161,11 +161,11 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
                 value={formData.timeStart}
                 onChange={handleChange}
                 placeholder="9:00 AM"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 End Time
               </label>
               <input
@@ -174,14 +174,14 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
                 value={formData.timeEnd}
                 onChange={handleChange}
                 placeholder="11:00 AM"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
               Location
             </label>
             <input
@@ -190,21 +190,21 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
               value={formData.location}
               onChange={handleChange}
               placeholder="e.g., Asakusa, Tokyo"
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Category & Priority Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 Category
               </label>
               <select
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
               >
                 {CATEGORY_OPTIONS.map(cat => (
                   <option key={cat.value} value={cat.value}>
@@ -214,14 +214,14 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 Priority
               </label>
               <select
                 name="priority"
                 value={formData.priority}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
               >
                 {PRIORITY_OPTIONS.map(p => (
                   <option key={p} value={p}>
@@ -234,7 +234,7 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
 
           {/* Custom Icon */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
               Icon (emoji)
             </label>
             <input
@@ -243,14 +243,14 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
               value={formData.icon}
               onChange={handleChange}
               placeholder="📸"
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Cost Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 Estimated Cost
               </label>
               <input
@@ -261,18 +261,18 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
                 placeholder="0"
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">
+              <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
                 Currency
               </label>
               <select
                 name="currency"
                 value={formData.currency}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
               >
                 {CURRENCY_OPTIONS.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -283,7 +283,7 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-xs md:text-sm font-medium text-zinc-300 mb-1">
               Notes / Tips
             </label>
             <textarea
@@ -292,23 +292,23 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, dat
               onChange={handleChange}
               placeholder="Any additional details..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 text-sm md:text-base bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 resize-none"
             />
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            className={`w-full py-2.5 ${isEditMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2`}
+            className={`w-full py-2 md:py-2.5 text-sm md:text-base ${isEditMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2`}
           >
             {isEditMode ? (
               <>
-                <Save size={18} />
+                <Save size={16} />
                 Save Changes
               </>
             ) : (
               <>
-                <Plus size={18} />
+                <Plus size={16} />
                 Add Activity
               </>
             )}

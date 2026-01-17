@@ -256,20 +256,20 @@ export function ItineraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6">
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">✈️ {TRIP_NAME}</h1>
-        <p className="text-zinc-400 mb-6">Jan 30 – Feb 16, 2026</p>
+      <div className="max-w-6xl mx-auto mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2">✈️ {TRIP_NAME}</h1>
+        <p className="text-sm md:text-base text-zinc-400 mb-4 md:mb-6">Jan 30 – Feb 16, 2026</p>
 
         {/* Budget Tracker Widget */}
-        <div className="bg-zinc-900/80 border border-zinc-700 rounded-2xl p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-zinc-900/80 border border-zinc-700 rounded-xl md:rounded-2xl p-4 md:p-5 mb-4 md:mb-6">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
             <div className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-emerald-400" />
-              <span className="font-semibold text-zinc-200">Trip Budget</span>
+              <Wallet className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+              <span className="text-sm md:text-base font-semibold text-zinc-200">Trip Budget</span>
             </div>
-            <span className="text-2xl font-bold text-white">${totals.budget.toLocaleString()} USD</span>
+            <span className="text-lg md:text-2xl font-bold text-white">${totals.budget.toLocaleString()} USD</span>
           </div>
           
           {/* Progress Bar */}
@@ -285,17 +285,17 @@ export function ItineraryPage() {
           </div>
           
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
             <div>
               <div className="text-xs text-zinc-500 mb-1">Spent</div>
-              <div className="text-lg font-bold text-amber-400">
+              <div className="text-base md:text-lg font-bold text-amber-400">
                 ${Math.round(totals.totalUSD).toLocaleString()}
               </div>
             </div>
             <div>
               <div className="text-xs text-zinc-500 mb-1">Remaining</div>
               <div className={classNames(
-                "text-lg font-bold",
+                "text-base md:text-lg font-bold",
                 totals.remaining >= 0 ? "text-emerald-400" : "text-red-400"
               )}>
                 ${Math.round(totals.remaining).toLocaleString()}
@@ -304,7 +304,7 @@ export function ItineraryPage() {
             <div>
               <div className="text-xs text-zinc-500 mb-1">Used</div>
               <div className={classNames(
-                "text-lg font-bold",
+                "text-base md:text-lg font-bold",
                 totals.percentUsed > 100 ? "text-red-400" :
                 totals.percentUsed > 80 ? "text-amber-400" : "text-zinc-300"
               )}>
@@ -315,11 +315,11 @@ export function ItineraryPage() {
           
           {/* Currency Breakdown */}
           {Object.keys(totals.costByCurrency).length > 0 && (
-            <div className="mt-4 pt-4 border-t border-zinc-800">
+            <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-zinc-800">
               <div className="text-xs text-zinc-500 mb-2">By Currency</div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(totals.costByCurrency).map(([currency, amount]) => (
-                  <span key={currency} className="px-2 py-1 bg-zinc-800 rounded-lg text-sm">
+                  <span key={currency} className="px-2 py-1 bg-zinc-800 rounded-lg text-xs md:text-sm">
                     <span className="text-zinc-400">{currency}:</span>{' '}
                     <span className="text-zinc-200 font-medium">{amount.toLocaleString()}</span>
                   </span>
@@ -330,20 +330,20 @@ export function ItineraryPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
           {/* Items to Book */}
           <div className={classNames(
-            "border rounded-xl p-4",
+            "border rounded-xl p-3 md:p-4",
             totals.totalUnbooked > 0 
               ? "bg-red-950/40 border-red-800/60" 
               : "bg-zinc-900/60 border-zinc-800"
           )}>
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
-              <AlertCircle className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-zinc-400 text-xs md:text-sm mb-1">
+              <AlertCircle className="h-3 w-3 md:h-4 md:w-4" />
               <span>Items to Book</span>
             </div>
             <div className={classNames(
-              "text-xl font-bold",
+              "text-lg md:text-xl font-bold",
               totals.totalUnbooked > 0 ? "text-red-400" : "text-emerald-400"
             )}>
               {totals.totalUnbooked > 0 ? `${totals.totalUnbooked} items` : 'All booked ✓'}
@@ -351,28 +351,28 @@ export function ItineraryPage() {
           </div>
 
           {/* Trip Duration */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 md:p-4">
+            <div className="flex items-center gap-2 text-zinc-400 text-xs md:text-sm mb-1">
               <span>📅</span>
               <span>Trip Duration</span>
             </div>
-            <div className="text-xl font-bold text-sky-400">
+            <div className="text-lg md:text-xl font-bold text-sky-400">
               {ITINERARY_DAYS.length} days
             </div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-zinc-500" />
             <input
               type="text"
-              placeholder="Search by date, location, or timezone..."
+              placeholder="Search by date, location..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
 
@@ -383,7 +383,7 @@ export function ItineraryPage() {
                 setShowBackupPlans(!showBackupPlans)
               }
               className={classNames(
-                "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition",
+                "flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-sm md:text-base font-medium transition",
                 showBackupPlans
                   ? "bg-red-600 hover:bg-red-700 text-white"
                   : "bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
@@ -394,19 +394,20 @@ export function ItineraryPage() {
               ) : (
                 <EyeOff className="h-4 w-4" />
               )}
-              {showBackupPlans ? "Hide Backup Plans" : "Show Backup Plans"}
+              <span className="hidden sm:inline">{showBackupPlans ? "Hide Backup Plans" : "Show Backup Plans"}</span>
+              <span className="sm:hidden">{showBackupPlans ? "Hide" : "Backups"}</span>
             </button>
           </div>
 
           {/* Summary */}
-          <div className="text-sm text-zinc-400">
+          <div className="text-xs md:text-sm text-zinc-400">
             Showing {filteredItinerary.length} of {ITINERARY_DAYS.length} days
           </div>
         </div>
       </div>
 
       {/* Days list */}
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         {filteredItinerary.map((day) => (
           <DayCard
             key={day.dateKey}
