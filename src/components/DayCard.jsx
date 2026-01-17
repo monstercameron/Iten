@@ -135,9 +135,16 @@ export function DayCard({
     onRemoveActivity?.(activityId, day.dateKey);
   };
 
+  // Check if this day is today
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = day.dateKey === today;
+
   return (
-    <div className={classNames(
-      "rounded-2xl border overflow-hidden",
+    <div 
+      id={`day-${day.dateKey}`}
+      className={classNames(
+        "rounded-2xl border overflow-hidden",
+        isToday && "ring-2 ring-blue-500 ring-offset-2 ring-offset-zinc-950",
       day.metadata?.hasUnbooked
         ? "border-red-700/60 bg-zinc-950/80 shadow-lg shadow-red-900/20"
         : "border-zinc-800/70 bg-zinc-950/60"
@@ -155,7 +162,14 @@ export function DayCard({
               <ChevronRight className="h-5 w-5 text-zinc-400" />
             )}
             <div>
-              <div className="font-semibold text-zinc-100">{day.dateDisplay}</div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-zinc-100">{day.dateDisplay}</span>
+                {isToday && (
+                  <span className="px-2 py-0.5 text-xs font-bold bg-blue-600 text-white rounded-full">
+                    TODAY
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-zinc-400 mt-0.5">
                 {day.summary}
                 {day.isInFlight && (

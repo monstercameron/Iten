@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, Eye, EyeOff, DollarSign, AlertCircle, Wallet, TrendingDown } from "lucide-react";
 import { ITINERARY_DAYS, TRIP_BUDGET, TRIP_NAME } from "../data/itinerary";
 import { DayCard } from "./DayCard";
@@ -35,6 +35,27 @@ export function ItineraryPage() {
   // Manual activities state - persisted to localStorage
   const [manualActivities, setManualActivities] = useState(loadManualActivities);
 
+  // Auto-expand today's date on page load
+  useEffect(() => {
+    const today = new Date();
+    const todayKey = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    
+    // Check if today exists in the itinerary
+    const todayExists = ITINERARY_DAYS.some(day => day.dateKey === todayKey);
+    
+    if (todayExists) {
+      setExpandedDays(new Set([todayKey]));
+      
+      // Scroll to today's card after a brief delay for render
+      setTimeout(() => {
+        const todayElement = document.getElementById(`day-${todayKey}`);
+        if (todayElement) {
+          todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
+
   // Add a new manual activity for a specific date
   const addManualActivity = useCallback((activity, dateKey) => {
     setManualActivities(prev => {
@@ -65,6 +86,9 @@ export function ItineraryPage() {
     let totalUnbooked = 0;
     let totalUSD = 0;
     
+    // Track segment IDs we've already counted to avoid duplicates
+    const countedSegments = new Set();
+    
     // Approximate exchange rates for budget calculation
     const exchangeRates = {
       'USD': 1,
@@ -73,20 +97,28 @@ export function ItineraryPage() {
     };
     
     ITINERARY_DAYS.forEach(day => {
-      // Aggregate costs from travel segments
+      // Aggregate costs from travel segments (only count each segment once)
       day.travel?.forEach(t => {
-        if (t.estimatedCost && t.currency) {
+        if (t.estimatedCost && t.currency && t.id && !countedSegments.has(t.id)) {
+          countedSegments.add(t.id);
           const currency = t.currency;
           costByCurrency[currency] = (costByCurrency[currency] || 0) + t.estimatedCost;
           totalUSD += t.estimatedCost * (exchangeRates[currency] || 1);
         }
       });
       
-      // Aggregate costs from shelter
+      // Aggregate costs from shelter - only count on first day of stay (dayOfStay === 1)
       if (day.shelter?.estimatedCost && day.shelter?.currency) {
-        const currency = day.shelter.currency;
-        costByCurrency[currency] = (costByCurrency[currency] || 0) + day.shelter.estimatedCost;
-        totalUSD += day.shelter.estimatedCost * (exchangeRates[currency] || 1);
+        // Only count shelter cost once - on the first day of stay
+        const isFirstDayOfStay = !day.shelter.isMultiDayStay || day.shelter.dayOfStay === 1;
+        const shelterId = `shelter-${day.shelter.name}-${day.shelter.estimatedCost}`;
+        
+        if (isFirstDayOfStay && !countedSegments.has(shelterId)) {
+          countedSegments.add(shelterId);
+          const currency = day.shelter.currency;
+          costByCurrency[currency] = (costByCurrency[currency] || 0) + day.shelter.estimatedCost;
+          totalUSD += day.shelter.estimatedCost * (exchangeRates[currency] || 1);
+        }
       }
       
       if (day.metadata?.unbootedCount) {
