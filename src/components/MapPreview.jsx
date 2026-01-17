@@ -1,6 +1,8 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon } from 'leaflet';
-import { MapPin, ExternalLink } from 'lucide-react';
+import { MapPin, ExternalLink, Maximize2 } from 'lucide-react';
+import { useState } from 'react';
+import { MapModal } from './MapModal';
 
 // Fix for default marker icon issue in react-leaflet
 // We'll use a custom marker icon
@@ -21,6 +23,8 @@ function getGoogleMapsUrl(lat, lng, name) {
 }
 
 export function MapPreview({ coordinates, name, address, type }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   if (!coordinates?.lat || !coordinates?.lng) {
     return null;
   }
@@ -42,32 +46,49 @@ export function MapPreview({ coordinates, name, address, type }) {
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      {/* Map Label Overlay */}
-      <div className="absolute top-3 left-3 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-700/50 flex items-center gap-2">
-        <MapPin size={18} className="text-blue-400" />
-        <span className="text-sm font-medium text-zinc-200">
-          {getTypeEmoji()} {name || "Tonight's Stay"}
-        </span>
-      </div>
+    <>
+      <div className="relative w-full h-full overflow-hidden">
+        {/* Map Label Overlay */}
+        <div className="absolute top-3 left-3 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-700/50 flex items-center gap-2">
+          <MapPin size={18} className="text-blue-400" />
+          <span className="text-sm font-medium text-zinc-200">
+            {getTypeEmoji()} {name || "Tonight's Stay"}
+          </span>
+        </div>
 
-      {/* Open in Google Maps button */}
-      <a
-        href={mapsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-3 right-3 z-[1000] bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-500/50 flex items-center gap-2 transition-colors"
-      >
-        <ExternalLink size={16} className="text-white" />
-        <span className="text-sm font-medium text-white">Open in Maps</span>
-      </a>
+        {/* Button row - top right */}
+        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
+          {/* Expand button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsModalOpen(true);
+            }}
+            className="bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-2 rounded-lg border border-zinc-600/50 transition-colors"
+            title="Expand map"
+          >
+            <Maximize2 size={16} className="text-white" />
+          </button>
+          
+          {/* Open in Google Maps button */}
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-500/50 flex items-center gap-2 transition-colors"
+          >
+            <ExternalLink size={16} className="text-white" />
+            <span className="text-sm font-medium text-white">Open in Maps</span>
+          </a>
+        </div>
 
-      <MapContainer
-        center={position}
-        zoom={zoomLevel}
-        scrollWheelZoom={false}
-        dragging={true}
-        zoomControl={false}
+        <MapContainer
+          center={position}
+          zoom={zoomLevel}
+          scrollWheelZoom={false}
+          dragging={true}
+          zoomControl={false}
         attributionControl={false}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
@@ -102,5 +123,14 @@ export function MapPreview({ coordinates, name, address, type }) {
       {/* Gradient overlay for aesthetics */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-zinc-950/40 via-transparent to-transparent z-[500]" />
     </div>
+
+    {/* Expanded Map Modal */}
+    <MapModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      type="shelter"
+      data={{ coordinates, name, address, type }}
+    />
+    </>
   );
 }

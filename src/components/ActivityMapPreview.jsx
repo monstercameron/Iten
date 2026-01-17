@@ -1,7 +1,8 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon, DivIcon } from 'leaflet';
-import { MapPin, ExternalLink } from 'lucide-react';
-import { useMemo } from 'react';
+import { MapPin, ExternalLink, Maximize2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { MapModal } from './MapModal';
 
 // Custom numbered marker icons for activities
 const createNumberedIcon = (number, color = '#14b8a6') => {
@@ -82,6 +83,8 @@ function getGoogleMapsDirectionsUrl(activities) {
 }
 
 export function ActivityMapPreview({ activities, height = 180 }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Filter activities that have coordinates
   const mappableActivities = useMemo(() => {
     return (activities || [])
@@ -111,6 +114,7 @@ export function ActivityMapPreview({ activities, height = 180 }) {
   const directionsUrl = getGoogleMapsDirectionsUrl(mappableActivities);
 
   return (
+    <>
     <div className="relative w-full overflow-hidden rounded-lg border border-teal-900/50" style={{ height: `${height}px` }}>
       {/* Map Label Overlay */}
       <div className="absolute top-2 left-2 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-teal-700/50 flex items-center gap-1.5">
@@ -120,18 +124,34 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         </span>
       </div>
 
-      {/* Open in Google Maps button */}
-      {directionsUrl && (
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute top-2 right-2 z-[1000] bg-teal-600/90 hover:bg-teal-500/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-teal-500/50 flex items-center gap-1.5 transition-colors"
+      {/* Button row - top right */}
+      <div className="absolute top-2 right-2 z-[1000] flex items-center gap-1.5">
+        {/* Expand button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsModalOpen(true);
+          }}
+          className="bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-1.5 rounded-lg border border-zinc-600/50 transition-colors"
+          title="Expand map"
         >
-          <ExternalLink size={12} className="text-white" />
-          <span className="text-xs font-medium text-white">Route in Maps</span>
-        </a>
-      )}
+          <Maximize2 size={14} className="text-white" />
+        </button>
+        
+        {/* Open in Google Maps button */}
+        {directionsUrl && (
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-teal-600/90 hover:bg-teal-500/90 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-teal-500/50 flex items-center gap-1.5 transition-colors"
+          >
+            <ExternalLink size={12} className="text-white" />
+            <span className="text-xs font-medium text-white">Route in Maps</span>
+          </a>
+        )}
+      </div>
 
       <div style={{ height: '100%', width: '100%' }}>
         <MapContainer
@@ -200,5 +220,14 @@ export function ActivityMapPreview({ activities, height = 180 }) {
       {/* Gradient overlay for aesthetics */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-zinc-950/30 via-transparent to-transparent z-[500]" />
     </div>
+
+    {/* Expanded Map Modal */}
+    <MapModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      type="activities"
+      data={{ activities }}
+    />
+    </>
   );
 }

@@ -68,12 +68,20 @@ export function ActivitiesSection({
         )}
       </button>
 
-      {isExpanded && (
+      {isExpanded && (() => {
+        // Dynamic height: ~110px per activity for 1-3, fixed at 330px for 3+
+        const itemCount = Math.min(items.length, 3);
+        const containerHeight = itemCount * 110;
+        
+        return (
         <div className="p-4 bg-teal-950/10 slide-down">
           {/* 2 Column Layout: Activities left (60%), Map right (40%) */}
-          <div className="flex gap-4 h-[320px]">
-            {/* LEFT COLUMN - Activity List (60%) - scrollable with 3 visible */}
-            <div className="w-[60%] min-w-0 overflow-y-auto space-y-2 pr-2">
+          <div className="flex gap-4" style={{ height: `${containerHeight}px` }}>
+            {/* LEFT COLUMN - Activity List (60%) - scrollable when > 3 items */}
+            <div className={classNames(
+              "w-[60%] min-w-0 space-y-2 pr-2",
+              items.length > 3 ? "overflow-y-auto" : ""
+            )}>
               {items.map((activity, idx) => (
                 <div 
                   key={activity.id || idx} 
@@ -168,11 +176,12 @@ export function ActivitiesSection({
             
             {/* RIGHT COLUMN - Map (40%) - stretches full height */}
             <div className="w-[40%] flex-shrink-0">
-              <ActivityMapPreview activities={items} height={320} />
+              <ActivityMapPreview activities={items} height={containerHeight} />
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
