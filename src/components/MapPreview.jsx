@@ -56,32 +56,29 @@ export function MapPreview({ coordinates, name, address, type }) {
           </span>
         </div>
 
-        {/* Button row - top right */}
-        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
-          {/* Expand button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsModalOpen(true);
-            }}
-            className="bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-2 rounded-lg border border-zinc-600/50 transition-colors"
-            title="Expand map"
-          >
-            <Maximize2 size={16} className="text-white" />
-          </button>
-          
-          {/* Open in Google Maps button */}
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-500/50 flex items-center gap-2 transition-colors"
-          >
-            <ExternalLink size={16} className="text-white" />
-            <span className="text-sm font-medium text-white">Open in Maps</span>
-          </a>
-        </div>
+        {/* Open in Google Maps button - top right */}
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-3 right-3 z-[1000] bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-500/50 flex items-center gap-2 transition-colors"
+        >
+          <ExternalLink size={16} className="text-white" />
+          <span className="text-sm font-medium text-white">Open in Maps</span>
+        </a>
+
+        {/* Expand button - bottom right */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsModalOpen(true);
+          }}
+          className="absolute bottom-3 right-3 z-[1000] bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-2 rounded-lg border border-zinc-600/50 transition-colors"
+          title="Expand map"
+        >
+          <Maximize2 size={16} className="text-white" />
+        </button>
 
         <MapContainer
           center={position}

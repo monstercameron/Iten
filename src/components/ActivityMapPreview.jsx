@@ -124,34 +124,31 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         </span>
       </div>
 
-      {/* Button row - top right */}
-      <div className="absolute top-2 right-2 z-[1000] flex items-center gap-1.5">
-        {/* Expand button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsModalOpen(true);
-          }}
-          className="bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-1.5 rounded-lg border border-zinc-600/50 transition-colors"
-          title="Expand map"
+      {/* Open in Google Maps button - top right */}
+      {directionsUrl && (
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-2 right-2 z-[1000] bg-teal-600/90 hover:bg-teal-500/90 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-teal-500/50 flex items-center gap-1.5 transition-colors"
         >
-          <Maximize2 size={14} className="text-white" />
-        </button>
-        
-        {/* Open in Google Maps button */}
-        {directionsUrl && (
-          <a
-            href={directionsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="bg-teal-600/90 hover:bg-teal-500/90 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-teal-500/50 flex items-center gap-1.5 transition-colors"
-          >
-            <ExternalLink size={12} className="text-white" />
-            <span className="text-xs font-medium text-white">Route in Maps</span>
-          </a>
-        )}
-      </div>
+          <ExternalLink size={12} className="text-white" />
+          <span className="text-xs font-medium text-white">Route in Maps</span>
+        </a>
+      )}
+
+      {/* Expand button - bottom right */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsModalOpen(true);
+        }}
+        className="absolute bottom-2 right-2 z-[1000] bg-zinc-800/90 hover:bg-zinc-700/90 backdrop-blur-sm p-1.5 rounded-lg border border-zinc-600/50 transition-colors"
+        title="Expand map"
+      >
+        <Maximize2 size={14} className="text-white" />
+      </button>
 
       <div style={{ height: '100%', width: '100%' }}>
         <MapContainer
