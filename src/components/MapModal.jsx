@@ -1,6 +1,7 @@
 import { X, MapPin, ExternalLink } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Icon, DivIcon } from 'leaflet';
+import { useEffect } from 'react';
 
 // Custom marker icon
 const defaultIcon = new Icon({
@@ -60,12 +61,17 @@ const categoryColors = {
 };
 
 export function MapModal({ isOpen, onClose, type, data }) {
-  if (!isOpen) return null;
-
   // Prevent body scroll when modal is open
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = isOpen ? 'hidden' : '';
-  }
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const isShelter = type === 'shelter';
   const isActivities = type === 'activities';
