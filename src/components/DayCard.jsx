@@ -101,6 +101,7 @@ export function DayCard({
   onToggleSection,
   showBackupPlans,
   manualActivities = [],
+  deletedActivityIds = [],
   onAddActivity,
   onRemoveActivity,
   onUpdateActivity,
@@ -109,8 +110,11 @@ export function DayCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
 
-  // Combine parsed activities with manually added ones
-  const allActivities = [...(day.activities || []), ...manualActivities];
+  // Combine parsed activities with manually added ones, filtering out deleted ones
+  const allActivities = [
+    ...(day.activities || []).filter(a => !deletedActivityIds.includes(a.id)),
+    ...manualActivities
+  ];
 
   const isSectionExpanded = (sectionName) => {
     return expandedSections.has(`${day.dateKey}:${sectionName}`);

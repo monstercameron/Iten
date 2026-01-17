@@ -4,8 +4,9 @@ import { ITINERARY_DAYS, TRIP_BUDGET, TRIP_NAME } from "../data/itinerary";
 import { DayCard } from "./DayCard";
 import { classNames } from "../utils/classNames";
 
-// Local storage key for persisting manual activities
+// Local storage keys for persisting data
 const STORAGE_KEY = 'travel_iten_manual_activities';
+const DELETED_KEY = 'travel_iten_deleted_activities';
 
 // Load manual activities from localStorage
 const loadManualActivities = () => {
@@ -26,6 +27,25 @@ const saveManualActivities = (activities) => {
   }
 };
 
+// Load deleted activity IDs from localStorage
+const loadDeletedActivities = () => {
+  try {
+    const stored = localStorage.getItem(DELETED_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+// Save deleted activity IDs to localStorage
+const saveDeletedActivities = (deleted) => {
+  try {
+    localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
+  } catch (e) {
+    console.error('Failed to save deleted activities:', e);
+  }
+};
+
 export function ItineraryPage() {
   const [expandedDays, setExpandedDays] = useState(new Set());
   const [expandedSections, setExpandedSections] = useState(new Set());
@@ -34,6 +54,9 @@ export function ItineraryPage() {
   
   // Manual activities state - persisted to localStorage
   const [manualActivities, setManualActivities] = useState(loadManualActivities);
+  
+  // Deleted activities state - tracks IDs of deleted original activities
+  const [deletedActivities, setDeletedActivities] = useState(loadDeletedActivities);
 
   // Auto-expand today's date on page load
   useEffect(() => {
@@ -82,16 +105,30 @@ export function ItineraryPage() {
     });
   }, []);
 
-  // Remove a manual activity
-  const removeManualActivity = useCallback((activityId, dateKey) => {
-    setManualActivities(prev => {
-      const updated = {
-        ...prev,
-        [dateKey]: (prev[dateKey] || []).filter(a => a.id !== activityId)
-      };
-      saveManualActivities(updated);
-      return updated;
-    });
+  // Remove an activity (handles both manual and original activities)
+  const removeActivity = useCallback((activityId, dateKey) => {
+    // Check if it's a manual activity (starts with 'manual-')
+    if (activityId?.startsWith('manual-')) {
+      // Remove from manual activities
+      setManualActivities(prev => {
+        const updated = {
+          ...prev,
+          [dateKey]: (prev[dateKey] || []).filter(a => a.id !== activityId)
+        };
+        saveManualActivities(updated);
+        return updated;
+      });
+    } else {
+      // Add to deleted activities list (for original itinerary activities)
+      setDeletedActivities(prev => {
+        const updated = {
+          ...prev,
+          [dateKey]: [...(prev[dateKey] || []), activityId]
+        };
+        saveDeletedActivities(updated);
+        return updated;
+      });
+    }
   }, []);
 
   // Calculate total costs across all days
@@ -356,8 +393,9 @@ export function ItineraryPage() {
             }
             showBackupPlans={showBackupPlans}
             manualActivities={manualActivities[day.dateKey] || []}
+            deletedActivityIds={deletedActivities[day.dateKey] || []}
             onAddActivity={addManualActivity}
-            onRemoveActivity={removeManualActivity}
+            onRemoveActivity={removeActivity}
             onUpdateActivity={updateManualActivity}
           />
         ))}

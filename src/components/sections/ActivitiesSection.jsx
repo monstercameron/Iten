@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { ChevronDown, ChevronRight, MapPin, X, ExternalLink, Clock, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { classNames } from "../../utils/classNames";
 import { ActivityMapPreview } from "../ActivityMapPreview";
+import DeleteConfirmModal from "../DeleteConfirmModal";
 
 // Generate Google Maps URL for a location
 function getGoogleMapsUrl(activity) {
@@ -44,6 +46,8 @@ export function ActivitiesSection({
   onRemoveActivity,
   onEditActivity
 }) {
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, activity: null });
+
   if (!items || items.length === 0) return null;
 
   const isManualActivity = (activity) => {
@@ -70,19 +74,16 @@ export function ActivitiesSection({
       </button>
 
       {isExpanded && (() => {
-        // Dynamic height: ~110px per activity for 1-3, fixed at 330px for 3+
-        const itemCount = Math.min(items.length, 3);
-        const containerHeight = itemCount * 110;
+        // Height based on item count: 1 item = 100px, 2 items = 200px, 3+ items = 300px with scroll
+        const containerHeight = items.length === 1 ? 100 : items.length === 2 ? 200 : 300;
+        const needsScroll = items.length >= 3;
         
         return (
         <div className="p-4 bg-teal-950/10 slide-down">
           {/* 2 Column Layout: Activities left (60%), Map right (40%) */}
           <div className="flex gap-4" style={{ height: `${containerHeight}px` }}>
-            {/* LEFT COLUMN - Activity List (60%) - scrollable when > 3 items */}
-            <div className={classNames(
-              "w-[60%] min-w-0 space-y-2 pr-2",
-              items.length > 3 ? "overflow-y-auto" : ""
-            )}>
+            {/* LEFT COLUMN - Activity List (60%) - scrollable when >= 3 items */}
+            <div className={`w-[60%] min-w-0 space-y-2 pr-2 ${needsScroll ? 'overflow-y-auto' : ''}`}>
               {items.map((activity, idx) => (
                 <div 
                   key={activity.id || idx} 
@@ -92,29 +93,33 @@ export function ActivitiesSection({
                     isManualActivity(activity) && "ring-1 ring-blue-700/50"
                   )}
                 >
-                  {/* Edit & Delete buttons for manual activities */}
-                  {isManualActivity(activity) && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {onEditActivity && (
-                        <button
-                          onClick={() => onEditActivity(activity)}
-                          className="p-1.5 rounded-md bg-amber-900/50 hover:bg-amber-700/50 text-amber-300 transition-colors"
-                          title="Edit activity"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      )}
-                      {onRemoveActivity && (
-                        <button
-                          onClick={() => onRemoveActivity(activity.id)}
-                          className="p-1.5 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 transition-colors"
-                          title="Delete activity"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  {/* Edit & Delete buttons - bottom right */}
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10">
+                    {onEditActivity && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditActivity(activity);
+                        }}
+                        className="p-1.5 rounded-md bg-amber-900/50 hover:bg-amber-700/50 text-amber-300 transition-colors"
+                        title="Edit activity"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {onRemoveActivity && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteModal({ isOpen: true, activity });
+                        }}
+                        className="p-1.5 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 transition-colors"
+                        title="Delete activity"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                   
                   {/* Activity header row */}
                   <div className="flex items-start justify-between gap-3">
@@ -196,6 +201,19 @@ export function ActivitiesSection({
         </div>
         );
       })()}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, activity: null })}
+        onConfirm={() => {
+          if (deleteModal.activity && onRemoveActivity) {
+            onRemoveActivity(deleteModal.activity.id);
+          }
+          setDeleteModal({ isOpen: false, activity: null });
+        }}
+        activityName={deleteModal.activity?.name || ''}
+      />
     </div>
   );
 }
