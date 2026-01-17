@@ -1,50 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Search, Eye, EyeOff, DollarSign, AlertCircle, Wallet, TrendingDown } from "lucide-react";
-import { ITINERARY_DAYS, TRIP_BUDGET, TRIP_NAME } from "../data/itinerary";
+import { Search, Eye, EyeOff, DollarSign, AlertCircle, Wallet, TrendingDown, Loader2 } from "lucide-react";
+import { parseItineraryData, getTripMeta, ITINERARY_DAYS as FALLBACK_DAYS, TRIP_BUDGET as FALLBACK_BUDGET, TRIP_NAME as FALLBACK_NAME } from "../data/itinerary";
+import { useItineraryDB } from "../db";
 import { DayCard } from "./DayCard";
+import { SetupWizard } from "./SetupWizard";
 import { classNames } from "../utils/classNames";
-
-// Local storage keys for persisting data
-const STORAGE_KEY = 'travel_iten_manual_activities';
-const DELETED_KEY = 'travel_iten_deleted_activities';
-
-// Load manual activities from localStorage
-const loadManualActivities = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
-};
-
-// Save manual activities to localStorage
-const saveManualActivities = (activities) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
-  } catch (e) {
-    console.error('Failed to save activities:', e);
-  }
-};
-
-// Load deleted activity IDs from localStorage
-const loadDeletedActivities = () => {
-  try {
-    const stored = localStorage.getItem(DELETED_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
-};
-
-// Save deleted activity IDs to localStorage
-const saveDeletedActivities = (deleted) => {
-  try {
-    localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
-  } catch (e) {
-    console.error('Failed to save deleted activities:', e);
-  }
-};
 
 export function ItineraryPage() {
   const [expandedDays, setExpandedDays] = useState(new Set());
@@ -52,14 +12,50 @@ export function ItineraryPage() {
   const [showBackupPlans, setShowBackupPlans] = useState(false);
   const [query, setQuery] = useState("");
   
-  // Manual activities state - persisted to localStorage
-  const [manualActivities, setManualActivities] = useState(loadManualActivities);
+  // Use IndexedDB for data persistence
+  const {
+    isLoading,
+    isReady,
+    needsSetup,
+    error,
+    itineraryData,
+    manualActivities: rawManualActivities,
+    deletedActivities,
+    addActivity: dbAddActivity,
+    updateActivity: dbUpdateActivity,
+    removeActivity: dbRemoveActivity,
+    deleteOriginalActivity: dbDeleteOriginal,
+    performImport,
+    completeSetup
+  } = useItineraryDB();
   
-  // Deleted activities state - tracks IDs of deleted original activities
-  const [deletedActivities, setDeletedActivities] = useState(loadDeletedActivities);
+  // Parse the itinerary data from IndexedDB (or fallback)
+  const { ITINERARY_DAYS, TRIP_BUDGET, TRIP_NAME } = useMemo(() => {
+    if (!isReady || !itineraryData) {
+      return {
+        ITINERARY_DAYS: FALLBACK_DAYS,
+        TRIP_BUDGET: FALLBACK_BUDGET,
+        TRIP_NAME: FALLBACK_NAME
+      };
+    }
+    
+    const meta = getTripMeta(itineraryData);
+    return {
+      ITINERARY_DAYS: parseItineraryData(itineraryData),
+      TRIP_BUDGET: meta.budget,
+      TRIP_NAME: meta.tripName
+    };
+  }, [isReady, itineraryData]);
+  
+  // Transform manualActivities from array to object keyed by date
+  // (This is now redundant as useItineraryDB already returns data keyed by date)
+  // Just use directly
+  const manualActivities = rawManualActivities || {};
 
   // Auto-expand today's date on page load
   useEffect(() => {
+    if (!isReady) return;
+    
     const today = new Date();
     const todayKey = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
     
@@ -77,59 +73,40 @@ export function ItineraryPage() {
         }
       }, 100);
     }
-  }, []);
+  }, [isReady, ITINERARY_DAYS]);
 
   // Add a new manual activity for a specific date
-  const addManualActivity = useCallback((activity, dateKey) => {
-    setManualActivities(prev => {
-      const updated = {
-        ...prev,
-        [dateKey]: [...(prev[dateKey] || []), activity]
-      };
-      saveManualActivities(updated);
-      return updated;
-    });
-  }, []);
+  const addManualActivity = useCallback(async (activity, dateKey) => {
+    try {
+      await dbAddActivity(dateKey, activity);
+    } catch (e) {
+      console.error('Failed to add activity:', e);
+    }
+  }, [dbAddActivity]);
 
   // Update an existing manual activity
-  const updateManualActivity = useCallback((activity, dateKey) => {
-    setManualActivities(prev => {
-      const updated = {
-        ...prev,
-        [dateKey]: (prev[dateKey] || []).map(a => 
-          a.id === activity.id ? activity : a
-        )
-      };
-      saveManualActivities(updated);
-      return updated;
-    });
-  }, []);
+  const updateManualActivity = useCallback(async (activity, dateKey) => {
+    try {
+      await dbUpdateActivity(dateKey, activity.id, activity);
+    } catch (e) {
+      console.error('Failed to update activity:', e);
+    }
+  }, [dbUpdateActivity]);
 
   // Remove an activity (handles both manual and original activities)
-  const removeActivity = useCallback((activityId, dateKey) => {
-    // Check if it's a manual activity (starts with 'manual-')
-    if (activityId?.startsWith('manual-')) {
-      // Remove from manual activities
-      setManualActivities(prev => {
-        const updated = {
-          ...prev,
-          [dateKey]: (prev[dateKey] || []).filter(a => a.id !== activityId)
-        };
-        saveManualActivities(updated);
-        return updated;
-      });
-    } else {
-      // Add to deleted activities list (for original itinerary activities)
-      setDeletedActivities(prev => {
-        const updated = {
-          ...prev,
-          [dateKey]: [...(prev[dateKey] || []), activityId]
-        };
-        saveDeletedActivities(updated);
-        return updated;
-      });
+  const removeActivity = useCallback(async (activityId, dateKey) => {
+    try {
+      // Check if it's a manual activity (starts with 'manual-')
+      if (activityId?.startsWith('manual-')) {
+        await dbRemoveActivity(dateKey, activityId);
+      } else {
+        // Add to deleted activities list (for original itinerary activities)
+        await dbDeleteOriginal(dateKey, activityId);
+      }
+    } catch (e) {
+      console.error('Failed to remove activity:', e);
     }
-  }, []);
+  }, [dbRemoveActivity, dbDeleteOriginal]);
 
   // Calculate total costs across all days
   const totals = useMemo(() => {
@@ -230,7 +207,7 @@ export function ItineraryPage() {
         day.timezone.toLowerCase().includes(lowerQuery)
       );
     });
-  }, [query]);
+  }, [query, ITINERARY_DAYS]);
 
   // Toggle day expanded state
   const toggleDay = (dayKey) => {
@@ -254,6 +231,47 @@ export function ItineraryPage() {
     }
     setExpandedSections(newSet);
   };
+
+  // Show loading state while IndexedDB initializes
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+          <p className="text-zinc-400">Loading your itinerary...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show setup wizard on first launch
+  if (needsSetup) {
+    return (
+      <SetupWizard 
+        onComplete={completeSetup}
+        onImport={performImport}
+      />
+    );
+  }
+
+  // Show error state if IndexedDB failed
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="h-8 w-8 text-red-500" />
+          <p className="text-red-400">Failed to load itinerary data</p>
+          <p className="text-zinc-500 text-sm">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6">

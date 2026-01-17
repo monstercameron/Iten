@@ -1,9 +1,18 @@
 import rawItineraryData from './rawItinerary.json';
 
-// Export budget and trip metadata
+// Export budget and trip metadata (default from JSON, can be overridden by IndexedDB data)
 export const TRIP_BUDGET = rawItineraryData.budget || { total: 0, currency: 'USD' };
 export const TRIP_NAME = rawItineraryData.tripName || 'Travel Itinerary';
 export const TRAVELERS = rawItineraryData.travelers || [];
+
+// Helper to get trip metadata from any data source
+export function getTripMeta(data = rawItineraryData) {
+  return {
+    tripName: data.tripName || 'Travel Itinerary',
+    budget: data.budget || { total: 0, currency: 'USD' },
+    travelers: data.travelers || []
+  };
+}
 
 const STATUS_MAPPING = {
   'BOOKED': 'BOOKED',
@@ -454,6 +463,14 @@ function extractLocationKey(location) {
  * Parse and export itinerary
  */
 export const ITINERARY_DAYS = parseItinerary();
+
+/**
+ * Parse itinerary from any data source (for IndexedDB integration)
+ * Call this function with IndexedDB data to get parsed days
+ */
+export function parseItineraryData(data) {
+  return parseItinerary(data);
+}
 
 /**
  * Get segments by type for a given day
