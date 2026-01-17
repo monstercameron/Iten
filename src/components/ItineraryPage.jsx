@@ -19,6 +19,7 @@ import { clearAllData } from "../db/indexedDB";
 import { DayCard } from "./DayCard";
 import { SetupWizard } from "./SetupWizard";
 import { classNames } from "../utils/classNames";
+import { DateNavigation } from "./DateNavigation";
 
 // ============================================================================
 // CONSTANTS
@@ -492,6 +493,24 @@ export function ItineraryPage() {
     });
   }, []);
 
+  /**
+   * Handles date navigation click - expands only the clicked day.
+   * Replaces previous selection to show only one expanded day.
+   * Also expands all sections within the clicked day.
+   * @param {string} dayKey - The date key to navigate to
+   */
+  const handleDateNavigationClick = useCallback((dayKey) => {
+    // Replace with only the clicked day (clear previous selections)
+    setExpandedDayKeys(new Set([dayKey]));
+    
+    // Expand all sections for the clicked day
+    const sectionNames = ['travel', 'shelter', 'meals', 'activities'];
+    const newExpandedSections = new Set(
+      sectionNames.map(section => `${dayKey}:${section}`)
+    );
+    setExpandedSectionKeys(newExpandedSections);
+  }, []);
+
   // ============================================================================
   // CONDITIONAL RENDERS (Loading, Setup, Error States)
   // ============================================================================
@@ -559,10 +578,18 @@ export function ItineraryPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6">
+      {/* Date Navigation Sidebar - Right side */}
+      <DateNavigation
+        days={filteredItineraryDays}
+        todayDateKey={todayDateKey}
+        expandedDayKeys={expandedDayKeys}
+        onDateClick={handleDateNavigationClick}
+      />
+      
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="max-w-6xl mx-auto mb-6 md:mb-8">
+      <div className="max-w-6xl mx-auto lg:mr-32 mb-6 md:mb-8">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2">✈️ {tripDisplayName}</h1>
@@ -735,7 +762,7 @@ export function ItineraryPage() {
       {/* ================================================================
           DAY CARDS LIST
           ================================================================ */}
-      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+      <div className="max-w-6xl mx-auto lg:mr-32 space-y-4 md:space-y-6">
         {filteredItineraryDays.map((dayEntry) => (
           <DayCard
             key={dayEntry.dateKey}
