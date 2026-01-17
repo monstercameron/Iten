@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, MapPin, X, ExternalLink, Clock, DollarSign } from "lucide-react";
+import { ChevronDown, ChevronRight, MapPin, X, ExternalLink, Clock, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { classNames } from "../../utils/classNames";
 import { ActivityMapPreview } from "../ActivityMapPreview";
 
@@ -41,7 +41,8 @@ export function ActivitiesSection({
   isExpanded, 
   onToggle,
   manualActivityIds = [],
-  onRemoveActivity 
+  onRemoveActivity,
+  onEditActivity
 }) {
   if (!items || items.length === 0) return null;
 
@@ -91,15 +92,28 @@ export function ActivitiesSection({
                     isManualActivity(activity) && "ring-1 ring-blue-700/50"
                   )}
                 >
-                  {/* Remove button for manual activities */}
-                  {isManualActivity(activity) && onRemoveActivity && (
-                    <button
-                      onClick={() => onRemoveActivity(activity.id)}
-                      className="absolute top-2 right-2 p-1.5 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remove activity"
-                    >
-                      <X size={14} />
-                    </button>
+                  {/* Edit & Delete buttons for manual activities */}
+                  {isManualActivity(activity) && (
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {onEditActivity && (
+                        <button
+                          onClick={() => onEditActivity(activity)}
+                          className="p-1.5 rounded-md bg-amber-900/50 hover:bg-amber-700/50 text-amber-300 transition-colors"
+                          title="Edit activity"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {onRemoveActivity && (
+                        <button
+                          onClick={() => onRemoveActivity(activity.id)}
+                          className="p-1.5 rounded-md bg-red-900/50 hover:bg-red-700/50 text-red-300 transition-colors"
+                          title="Delete activity"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   )}
                   
                   {/* Activity header row */}

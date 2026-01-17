@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Plus, Save } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
   { value: 'Food', icon: '🍜' },
@@ -18,19 +18,43 @@ const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
 
 const CURRENCY_OPTIONS = ['USD', 'PHP', 'JPY'];
 
-export default function AddActivityModal({ isOpen, onClose, onAdd, date }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    timeStart: '',
-    timeEnd: '',
-    location: '',
-    category: 'Sightseeing',
-    icon: '📸',
-    priority: 'medium',
-    notes: '',
-    estimatedCost: '',
-    currency: 'JPY'
-  });
+const defaultFormData = {
+  name: '',
+  timeStart: '',
+  timeEnd: '',
+  location: '',
+  category: 'Sightseeing',
+  icon: '📸',
+  priority: 'medium',
+  notes: '',
+  estimatedCost: '',
+  currency: 'JPY'
+};
+
+export default function AddActivityModal({ isOpen, onClose, onAdd, onUpdate, date, editingActivity = null }) {
+  const [formData, setFormData] = useState(defaultFormData);
+
+  const isEditMode = !!editingActivity;
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingActivity) {
+      setFormData({
+        name: editingActivity.name || '',
+        timeStart: editingActivity.timeStart || '',
+        timeEnd: editingActivity.timeEnd || '',
+        location: editingActivity.location || '',
+        category: editingActivity.category || 'Sightseeing',
+        icon: editingActivity.icon || '📸',
+        priority: editingActivity.priority || 'medium',
+        notes: editingActivity.notes || '',
+        estimatedCost: editingActivity.estimatedCost ? String(editingActivity.estimatedCost) : '',
+        currency: editingActivity.currency || 'JPY'
+      });
+    } else {
+      setFormData(defaultFormData);
+    }
+  }, [editingActivity, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,7 +75,7 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, date }) {
     e.preventDefault();
     
     const activity = {
-      id: `manual-${Date.now()}`,
+      id: isEditMode ? editingActivity.id : `manual-${Date.now()}`,
       name: formData.name,
       timeStart: formData.timeStart,
       timeEnd: formData.timeEnd,
@@ -67,21 +91,14 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, date }) {
         : formData.timeStart || ''
     };
     
-    onAdd(activity, date);
+    if (isEditMode && onUpdate) {
+      onUpdate(activity, date);
+    } else {
+      onAdd(activity, date);
+    }
     
     // Reset form
-    setFormData({
-      name: '',
-      timeStart: '',
-      timeEnd: '',
-      location: '',
-      category: 'Sightseeing',
-      icon: '📸',
-      priority: 'medium',
-      notes: '',
-      estimatedCost: '',
-      currency: 'JPY'
-    });
+    setFormData(defaultFormData);
     
     onClose();
   };
@@ -94,8 +111,17 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, date }) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-700">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Plus size={20} className="text-blue-400" />
-            Add Activity
+            {isEditMode ? (
+              <>
+                <Save size={20} className="text-amber-400" />
+                Edit Activity
+              </>
+            ) : (
+              <>
+                <Plus size={20} className="text-blue-400" />
+                Add Activity
+              </>
+            )}
           </h2>
           <button
             onClick={onClose}
@@ -273,10 +299,19 @@ export default function AddActivityModal({ isOpen, onClose, onAdd, date }) {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className={`w-full py-2.5 ${isEditMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2`}
           >
-            <Plus size={18} />
-            Add Activity
+            {isEditMode ? (
+              <>
+                <Save size={18} />
+                Save Changes
+              </>
+            ) : (
+              <>
+                <Plus size={18} />
+                Add Activity
+              </>
+            )}
           </button>
         </form>
       </div>

@@ -103,9 +103,11 @@ export function DayCard({
   manualActivities = [],
   onAddActivity,
   onRemoveActivity,
+  onUpdateActivity,
 }) {
   const [copied, setCopied] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
 
   // Combine parsed activities with manually added ones
   const allActivities = [...(day.activities || []), ...manualActivities];
@@ -132,8 +134,22 @@ export function DayCard({
     onAddActivity?.(activity, day.dateKey);
   };
 
+  const handleUpdateActivity = (activity) => {
+    onUpdateActivity?.(activity, day.dateKey);
+  };
+
   const handleRemoveActivity = (activityId) => {
     onRemoveActivity?.(activityId, day.dateKey);
+  };
+
+  const handleEditActivity = (activity) => {
+    setEditingActivity(activity);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingActivity(null);
   };
 
   // Check if this day is today
@@ -150,13 +166,13 @@ export function DayCard({
         ? "border-red-600/80 bg-zinc-900 shadow-lg shadow-red-900/30"
         : "border-zinc-700 bg-zinc-900"
     )}>
-      {/* Day Header - 2 Column Layout */}
+      {/* Day Header - 2 Column Layout (60:40) */}
       <div
         onClick={onToggle}
         className="flex cursor-pointer hover:bg-zinc-800/30 transition min-h-[400px]"
       >
-        {/* LEFT COLUMN - Info & Tags */}
-        <div className="flex-1 p-8 flex flex-col justify-between">
+        {/* LEFT COLUMN - Info & Tags (60%) */}
+        <div className="w-[60%] p-8 flex flex-col justify-between">
           {/* Top section: chevron, date, today badge, copy, region */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -262,6 +278,7 @@ export function DayCard({
             onToggle={() => onToggleSection(sectionNames.activities)}
             manualActivityIds={manualActivities.map(a => a.id)}
             onRemoveActivity={handleRemoveActivity}
+            onEditActivity={handleEditActivity}
           />
 
           {/* Add Activity Button */}
@@ -275,12 +292,14 @@ export function DayCard({
         </div>
       )}
 
-      {/* Add Activity Modal */}
+      {/* Add/Edit Activity Modal */}
       <AddActivityModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onAdd={handleAddActivity}
+        onUpdate={handleUpdateActivity}
         date={day.dateKey}
+        editingActivity={editingActivity}
       />
     </div>
   );

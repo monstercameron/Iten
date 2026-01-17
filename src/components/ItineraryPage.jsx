@@ -68,6 +68,20 @@ export function ItineraryPage() {
     });
   }, []);
 
+  // Update an existing manual activity
+  const updateManualActivity = useCallback((activity, dateKey) => {
+    setManualActivities(prev => {
+      const updated = {
+        ...prev,
+        [dateKey]: (prev[dateKey] || []).map(a => 
+          a.id === activity.id ? activity : a
+        )
+      };
+      saveManualActivities(updated);
+      return updated;
+    });
+  }, []);
+
   // Remove a manual activity
   const removeManualActivity = useCallback((activityId, dateKey) => {
     setManualActivities(prev => {
@@ -344,6 +358,7 @@ export function ItineraryPage() {
             manualActivities={manualActivities[day.dateKey] || []}
             onAddActivity={addManualActivity}
             onRemoveActivity={removeManualActivity}
+            onUpdateActivity={updateManualActivity}
           />
         ))}
 
