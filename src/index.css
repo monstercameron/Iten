@@ -10,3 +10,32 @@ body {
   background-color: rgb(9, 9, 11);
   color: rgb(244, 244, 245);
 }
+
+/* Slide open animation for expandable sections */
+.slide-down-enter {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.slide-down-enter-active {
+  max-height: 1000px;
+  opacity: 1;
+  transition: max-height 150ms ease-out, opacity 100ms ease-out;
+}
+
+.slide-down {
+  animation: slideDown 150ms ease-out forwards;
+  overflow: hidden;
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 1000px;
+    opacity: 1;
+  }
+}

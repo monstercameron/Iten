@@ -69,14 +69,14 @@ export function ActivitiesSection({
       </button>
 
       {isExpanded && (
-        <div className="flex flex-col p-3 gap-3">
-          {/* Activity Map - Top half */}
-          <div className="w-full h-[200px]">
-            <ActivityMapPreview activities={items} height={200} />
+        <div className="flex flex-col p-3 gap-3 slide-down mb-3">
+          {/* Activity Map - sized to content */}
+          <div className="w-full">
+            <ActivityMapPreview activities={items} height={180} />
           </div>
           
-          {/* Activity List - Bottom half */}
-          <div className="w-full max-h-[200px] overflow-y-auto divide-y divide-teal-900/30 bg-teal-950/10 rounded-lg">
+          {/* Activity List - auto height based on content */}
+          <div className="w-full divide-y divide-teal-900/30 bg-teal-950/10 rounded-lg">
             {items.map((activity, idx) => (
               <div 
                 key={activity.id || idx} 

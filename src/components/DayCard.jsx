@@ -150,83 +150,87 @@ export function DayCard({
         ? "border-red-600/80 bg-zinc-900 shadow-lg shadow-red-900/30"
         : "border-zinc-700 bg-zinc-900"
     )}>
-      {/* Map Preview - Always visible at top */}
-      {day.shelter?.coordinates && (
-        <div className="relative">
-          <MapPreview
-            coordinates={day.shelter.coordinates}
-            name={day.shelter.name}
-            address={day.shelter.address}
-            type={day.shelter.type}
-          />
-        </div>
-      )}
-
-      {/* Day Header */}
+      {/* Day Header - 2 Column Layout */}
       <div
         onClick={onToggle}
-        className="w-full px-5 py-4 hover:bg-zinc-800/50 transition flex flex-col gap-3 cursor-pointer"
+        className="flex cursor-pointer hover:bg-zinc-800/30 transition min-h-[400px]"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-1 text-left">
-            {isExpanded ? (
-              <ChevronDown className="h-6 w-6 text-zinc-300" />
-            ) : (
-              <ChevronRight className="h-6 w-6 text-zinc-300" />
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg text-white">{day.dateDisplay}</span>
+        {/* LEFT COLUMN - Info & Tags */}
+        <div className="flex-1 p-8 flex flex-col justify-between">
+          {/* Top section: chevron, date, today badge, copy, region */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {isExpanded ? (
+                <ChevronDown className="h-9 w-9 text-zinc-300" />
+              ) : (
+                <ChevronRight className="h-9 w-9 text-zinc-300" />
+              )}
+              <div className="flex items-center gap-4">
+                <span className="font-bold text-2xl text-white">{day.dateDisplay}</span>
                 {isToday && (
-                  <span className="px-2.5 py-1 text-xs font-bold bg-blue-500 text-white rounded-full">
+                  <span className="px-4 py-2 text-base font-bold bg-blue-500 text-white rounded-full">
                     TODAY
                   </span>
                 )}
               </div>
-              <div className="text-sm text-zinc-300 mt-1">
-                {day.summary}
-                {day.isInFlight && (
-                  <span className="ml-2 text-sky-400 font-medium">✈️ In Flight</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Copy Button */}
+              <button
+                onClick={handleCopy}
+                className={classNames(
+                  "p-3 rounded-lg border transition-all",
+                  copied
+                    ? "bg-emerald-800/60 border-emerald-500/60 text-emerald-300"
+                    : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:bg-zinc-700 hover:text-white"
                 )}
+                title={copied ? "Copied!" : "Copy day itinerary"}
+              >
+                {copied ? (
+                  <Check className="h-5 w-5" />
+                ) : (
+                  <Copy className="h-5 w-5" />
+                )}
+              </button>
+              {/* Region Badge */}
+              <div className={classNames(
+                "flex items-center gap-2 px-4 py-2 rounded-lg border text-base font-semibold",
+                region.bg, region.border, region.text
+              )}>
+                <span className="text-lg">{region.flag}</span>
+                <span>{day.timezone}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Copy Button */}
-            <button
-              onClick={handleCopy}
-              className={classNames(
-                "p-2 rounded-lg border transition-all",
-                copied
-                  ? "bg-emerald-800/60 border-emerald-500/60 text-emerald-300"
-                  : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:bg-zinc-700 hover:text-white"
-              )}
-              title={copied ? "Copied!" : "Copy day itinerary"}
-            >
-              {copied ? (
-                <Check className="h-5 w-5" />
-              ) : (
-                <Copy className="h-5 w-5" />
-              )}
-            </button>
-            {/* Region Badge */}
-            <div className={classNames(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold",
-              region.bg, region.border, region.text
-            )}>
-              <span>{region.flag}</span>
-              <span>{day.timezone}</span>
-            </div>
+
+          {/* Middle section: Summary */}
+          <div className="text-lg text-zinc-300">
+            {day.summary}
+            {day.isInFlight && (
+              <span className="ml-2 text-sky-400 font-medium">✈️ In Flight</span>
+            )}
           </div>
+
+          {/* Bottom section: Metadata tags */}
+          <DayMetadata day={day} />
         </div>
 
-        {/* Metadata row */}
-        <DayMetadata day={day} />
+        {/* RIGHT COLUMN - Map */}
+        {day.shelter?.coordinates && (
+          <div className="w-[400px] flex-shrink-0">
+            <MapPreview
+              coordinates={day.shelter.coordinates}
+              name={day.shelter.name}
+              address={day.shelter.address}
+              type={day.shelter.type}
+            />
+          </div>
+        )}
       </div>
 
       {/* Day Content */}
       {isExpanded && (
-        <div className="border-t border-zinc-700 p-5 space-y-5">
+        <div className="border-t border-zinc-700 p-5 space-y-5 slide-down">
           {/* Travel Section */}
           <TravelSection
             items={day.travel}

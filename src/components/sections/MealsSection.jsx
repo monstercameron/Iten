@@ -24,7 +24,7 @@ export function MealsSection({ meals, isExpanded, onToggle }) {
       </button>
 
       {isExpanded && (
-        <div className="divide-y divide-amber-900/30 bg-amber-950/10">
+        <div className="divide-y divide-amber-900/30 bg-amber-950/10 slide-down">
           {meals.map((meal, idx) => (
             <div key={idx} className="px-3 py-2">
               <div className="flex items-start justify-between gap-3">

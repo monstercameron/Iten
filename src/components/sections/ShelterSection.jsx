@@ -24,7 +24,7 @@ export function ShelterSection({ shelter, isExpanded, onToggle }) {
       </button>
 
       {isExpanded && (
-        <div className="px-3 py-3 bg-purple-950/10 space-y-2">
+        <div className="px-3 py-3 bg-purple-950/10 space-y-2 slide-down">
           {shelter.name && (
             <div>
               <div className="text-sm font-medium text-purple-100">

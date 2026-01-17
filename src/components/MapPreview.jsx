@@ -42,11 +42,11 @@ export function MapPreview({ coordinates, name, address, type }) {
   };
 
   return (
-    <div className="relative w-full h-36 overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden">
       {/* Map Label Overlay */}
-      <div className="absolute top-2 left-2 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-zinc-700/50 flex items-center gap-1.5">
-        <MapPin size={14} className="text-blue-400" />
-        <span className="text-xs font-medium text-zinc-200">
+      <div className="absolute top-3 left-3 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-700/50 flex items-center gap-2">
+        <MapPin size={18} className="text-blue-400" />
+        <span className="text-sm font-medium text-zinc-200">
           {getTypeEmoji()} {name || "Tonight's Stay"}
         </span>
       </div>
@@ -56,10 +56,10 @@ export function MapPreview({ coordinates, name, address, type }) {
         href={mapsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute top-2 right-2 z-[1000] bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-blue-500/50 flex items-center gap-1.5 transition-colors"
+        className="absolute top-3 right-3 z-[1000] bg-blue-600/90 hover:bg-blue-500/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-500/50 flex items-center gap-2 transition-colors"
       >
-        <ExternalLink size={12} className="text-white" />
-        <span className="text-xs font-medium text-white">Open in Maps</span>
+        <ExternalLink size={16} className="text-white" />
+        <span className="text-sm font-medium text-white">Open in Maps</span>
       </a>
 
       <MapContainer

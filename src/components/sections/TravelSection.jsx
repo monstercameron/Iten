@@ -27,7 +27,7 @@ export function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) 
       </button>
 
       {isExpanded && (
-        <div className="divide-y divide-blue-900/30 bg-blue-950/10">
+        <div className="divide-y divide-blue-900/30 bg-blue-950/10 slide-down">
           {items.map((item) => (
             <div key={item.id} className="px-3 py-3">
               {/* Split layout: Details on left, Map on right */}

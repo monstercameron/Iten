@@ -111,7 +111,7 @@ export function ActivityMapPreview({ activities, height = 180 }) {
   const directionsUrl = getGoogleMapsDirectionsUrl(mappableActivities);
 
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-lg border border-teal-900/50">
+    <div className="relative w-full overflow-hidden rounded-lg border border-teal-900/50" style={{ height: `${height}px` }}>
       {/* Map Label Overlay */}
       <div className="absolute top-2 left-2 z-[1000] bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-teal-700/50 flex items-center gap-1.5">
         <MapPin size={14} className="text-teal-400" />
@@ -133,7 +133,7 @@ export function ActivityMapPreview({ activities, height = 180 }) {
         </a>
       )}
 
-      <div style={{ height: `${height}px`, width: '100%' }}>
+      <div style={{ height: '100%', width: '100%' }}>
         <MapContainer
           {...(center ? { center, zoom: 14 } : { bounds })}
           scrollWheelZoom={false}
