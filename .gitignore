@@ -21,3 +21,5 @@ build/
 *.swp
 *.swo
 *~
+
+src/data/rawItinerary.json
