@@ -741,6 +741,109 @@ export async function updateTripSegment(tripName, segmentId, segmentUpdates) {
 // =============================================================================
 
 /**
+ * Exports all user data (manual activities, deleted activities, trip meta) as JSON.
+ * This allows users to backup their data and transfer it to other devices.
+ * @async
+ * @returns {Promise<[Object, null] | [null, Error]>} Go-style result tuple with export data
+ */
+export async function exportAllUserData() {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('exportAllUserData', dbErr)];
+
+  // Gather all user data
+  const [manualActivities, manualErr] = await getAllManualActivities();
+  if (manualErr) return [null, wrapError('exportAllUserData.manualActivities', manualErr)];
+
+  const [deletedActivities, deletedErr] = await getAllDeletedActivities();
+  if (deletedErr) return [null, wrapError('exportAllUserData.deletedActivities', deletedErr)];
+
+  const [tripMeta, metaErr] = await getTripMeta();
+  if (metaErr) return [null, wrapError('exportAllUserData.tripMeta', metaErr)];
+
+  const [trips, tripsErr] = await getAllTrips();
+  if (tripsErr) return [null, wrapError('exportAllUserData.trips', tripsErr)];
+
+  const exportData = {
+    version: DATABASE_VERSION,
+    exportedAt: new Date().toISOString(),
+    tripMeta,
+    trips,
+    manualActivities,
+    deletedActivities
+  };
+
+  return [exportData, null];
+}
+
+/**
+ * Downloads the exported user data as a JSON file.
+ * @async
+ * @returns {Promise<[void, null] | [null, Error]>} Go-style result tuple
+ */
+export async function downloadUserDataAsJson() {
+  const [exportData, exportErr] = await exportAllUserData();
+  if (exportErr) return [null, exportErr];
+
+  const jsonString = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `travel-itinerary-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  return [undefined, null];
+}
+
+/**
+ * Imports user data from a previously exported JSON file.
+ * Merges with existing data (doesn't overwrite).
+ * @async
+ * @param {Object} importData - The exported data object
+ * @returns {Promise<[void, null] | [null, Error]>} Go-style result tuple
+ */
+export async function importUserData(importData) {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('importUserData', dbErr)];
+
+  // Validate import data structure
+  if (!importData || typeof importData !== 'object') {
+    return [null, new Error('Invalid import data format')];
+  }
+
+  // Import manual activities
+  if (importData.manualActivities) {
+    for (const [date, activities] of Object.entries(importData.manualActivities)) {
+      for (const activity of activities) {
+        const [, addErr] = await addManualActivity(date, activity);
+        if (addErr) {
+          console.warn(`Failed to import activity for ${date}:`, addErr);
+        }
+      }
+    }
+  }
+
+  // Import deleted activities
+  if (importData.deletedActivities) {
+    for (const [date, ids] of Object.entries(importData.deletedActivities)) {
+      for (const id of ids) {
+        const [, delErr] = await markActivityDeleted(date, id);
+        if (delErr) {
+          console.warn(`Failed to import deleted activity for ${date}:`, delErr);
+        }
+      }
+    }
+  }
+
+  console.log('✅ User data imported successfully');
+  return [undefined, null];
+}
+
+/**
  * Clears all data from the database while preserving the schema.
  * Useful for resetting the app to a clean state.
  * @async
@@ -815,6 +918,8 @@ export function deleteDatabase() {
 if (typeof window !== 'undefined') {
   window.__clearTravelDB = clearAllData;
   window.__deleteTravelDB = deleteDatabase;
+  window.__exportTravelData = downloadUserDataAsJson;
+  window.__exportTravelDataRaw = exportAllUserData;
 }
 
 // Export store names for external use

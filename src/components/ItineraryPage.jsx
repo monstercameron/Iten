@@ -12,10 +12,10 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Search, Eye, EyeOff, AlertCircle, Wallet, Loader2 } from "lucide-react";
+import { Search, Eye, EyeOff, AlertCircle, Wallet, Loader2, Download } from "lucide-react";
 import { parseItineraryData, getTripMeta, ITINERARY_DAYS as FALLBACK_DAYS, TRIP_BUDGET as FALLBACK_BUDGET, TRIP_NAME as FALLBACK_NAME } from "../data/itinerary";
 import { useItineraryDB } from "../db";
-import { clearAllData } from "../db/indexedDB";
+import { clearAllData, downloadUserDataAsJson } from "../db/indexedDB";
 import { DayCard } from "./DayCard";
 import { SetupWizard } from "./SetupWizard";
 import { classNames } from "../utils/classNames";
@@ -595,21 +595,36 @@ export function ItineraryPage() {
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2">✈️ {tripDisplayName}</h1>
             <p className="text-sm md:text-base text-zinc-400 mb-4 md:mb-6">{tripDateRangeDisplay}</p>
           </div>
-          <button
-            onClick={async () => {
-              if (confirm('Reset all data? You will need to upload your JSON file again.')) {
-                const [, clearErr] = await clearAllData();
-                if (clearErr) {
-                  console.error('Failed to clear data:', clearErr);
-                  return;
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                const [, exportErr] = await downloadUserDataAsJson();
+                if (exportErr) {
+                  console.error('Failed to export data:', exportErr);
+                  alert('Failed to export data. Check console for details.');
                 }
-                window.location.reload();
-              }
-            }}
-            className="px-3 py-1.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-lg transition-colors border border-zinc-800 hover:border-red-500/30"
-          >
-            Reset
-          </button>
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800/50 rounded-lg transition-colors border border-zinc-800 hover:border-emerald-500/30"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+            <button
+              onClick={async () => {
+                if (confirm('Reset all data? You will need to upload your JSON file again.')) {
+                  const [, clearErr] = await clearAllData();
+                  if (clearErr) {
+                    console.error('Failed to clear data:', clearErr);
+                    return;
+                  }
+                  window.location.reload();
+                }
+              }}
+              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-lg transition-colors border border-zinc-800 hover:border-red-500/30"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         {/* ================================================================

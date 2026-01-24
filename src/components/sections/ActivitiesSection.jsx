@@ -174,9 +174,6 @@ export const ActivitiesSection = memo(function ActivitiesSection({
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState({ isOpen: false, activity: null });
   const [copiedLocationActivityId, setCopiedLocationActivityId] = useState(null);
 
-  // Early return if no activities to display
-  if (!items || items.length === 0) return null;
-
   /**
    * Handles copying activity location to clipboard
    * @param {Event} event - Click event
@@ -219,6 +216,9 @@ export const ActivitiesSection = memo(function ActivitiesSection({
     }
     setDeleteConfirmationModal({ isOpen: false, activity: null });
   }, [deleteConfirmationModal.activity, onRemoveActivity]);
+
+  // Early return if no activities to display (AFTER all hooks)
+  if (!items || items.length === 0) return null;
 
   return (
     <div className="border border-teal-900/50 rounded-lg overflow-hidden bg-teal-950/20">
