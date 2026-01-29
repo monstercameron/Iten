@@ -25,7 +25,11 @@ import {
   updateActivity,
   removeActivity,
   markActivityDeleted,
-  clearAllData
+  clearAllData,
+  getAllBoardingPasses,
+  addBoardingPass as addBoardingPassToDB,
+  deleteBoardingPass as deleteBoardingPassFromDB,
+  getBoardingPassesBySegment
 } from './indexedDB';
 
 // =============================================================================
@@ -194,6 +198,64 @@ function addDeletedActivityIdToState(previousState, dateKey, activityId) {
   };
 }
 
+/**
+ * Organizes boarding passes into a lookup object keyed by segmentId.
+ * 
+ * @pure
+ * @param {Array<Object>} boardingPassesArray - Array of boarding pass objects
+ * @returns {Object} Object keyed by segmentId with arrays of boarding passes
+ */
+function organizeBoardingPassesBySegment(boardingPassesArray) {
+  const passesBySegment = {};
+  
+  for (const pass of boardingPassesArray) {
+    const segmentId = pass.segmentId;
+    if (!passesBySegment[segmentId]) {
+      passesBySegment[segmentId] = [];
+    }
+    passesBySegment[segmentId].push(pass);
+  }
+  
+  return passesBySegment;
+}
+
+/**
+ * Adds a boarding pass to state immutably.
+ * 
+ * @pure
+ * @param {Object} previousState - Previous boarding passes state object
+ * @param {Object} newBoardingPass - The boarding pass to add
+ * @returns {Object} New state object with added boarding pass
+ */
+function addBoardingPassToState(previousState, newBoardingPass) {
+  const segmentId = newBoardingPass.segmentId;
+  const existingPassesForSegment = previousState[segmentId] || [];
+  return {
+    ...previousState,
+    [segmentId]: [...existingPassesForSegment, newBoardingPass]
+  };
+}
+
+/**
+ * Removes a boarding pass from state immutably.
+ * 
+ * @pure
+ * @param {Object} previousState - Previous boarding passes state object
+ * @param {string} segmentId - The segment ID
+ * @param {string} boardingPassId - ID of boarding pass to remove
+ * @returns {Object} New state object without the boarding pass
+ */
+function removeBoardingPassFromState(previousState, segmentId, boardingPassId) {
+  const existingPassesForSegment = previousState[segmentId] || [];
+  const filteredPasses = existingPassesForSegment.filter(
+    pass => pass.id !== boardingPassId
+  );
+  return {
+    ...previousState,
+    [segmentId]: filteredPasses
+  };
+}
+
 // =============================================================================
 // MAIN HOOK
 // =============================================================================
@@ -245,6 +307,9 @@ export function useItineraryDB() {
   
   /** @type {[Object, Function]} Deleted activity IDs keyed by date */
   const [deletedActivitiesState, setDeletedActivitiesState] = useState({});
+
+  /** @type {[Object, Function]} Boarding passes keyed by segment ID */
+  const [boardingPassesState, setBoardingPassesState] = useState({});
 
   // ==========================================================================
   // INITIALIZATION EFFECT
@@ -316,6 +381,15 @@ export function useItineraryDB() {
         return;
       }
 
+      const [loadedBoardingPasses, boardingPassErr] = await getAllBoardingPasses();
+      if (boardingPassErr) {
+        console.error('❌ Failed to load boarding passes:', boardingPassErr);
+        setErrorMessageState(boardingPassErr.message);
+        setShowSetupWizardState(true);
+        setIsLoadingState(false);
+        return;
+      }
+
       // Validate loaded data
       if (!isValidItineraryData(loadedItineraryData)) {
         console.warn('⚠️ No itinerary data found, showing setup wizard');
@@ -328,6 +402,7 @@ export function useItineraryDB() {
       setItineraryDataState(loadedItineraryData);
       setManualActivitiesState(loadedManualActivities);
       setDeletedActivitiesState(loadedDeletedActivities);
+      setBoardingPassesState(organizeBoardingPassesBySegment(loadedBoardingPasses));
       setIsDataReadyState(true);
       setIsLoadingState(false);
       console.log('✅ Data loaded from IndexedDB');
@@ -374,6 +449,15 @@ export function useItineraryDB() {
       return [null, deletedErr];
     }
 
+    const [loadedBoardingPasses, boardingPassErr] = await getAllBoardingPasses();
+    if (boardingPassErr) {
+      console.error('❌ Failed to load boarding passes:', boardingPassErr);
+      setErrorMessageState(boardingPassErr.message);
+      setShowSetupWizardState(true);
+      setIsLoadingState(false);
+      return [null, boardingPassErr];
+    }
+
     if (!isValidItineraryData(loadedItineraryData)) {
       console.warn('⚠️ No itinerary data found, showing setup wizard');
       setShowSetupWizardState(true);
@@ -384,6 +468,7 @@ export function useItineraryDB() {
     setItineraryDataState(loadedItineraryData);
     setManualActivitiesState(loadedManualActivities);
     setDeletedActivitiesState(loadedDeletedActivities);
+    setBoardingPassesState(organizeBoardingPassesBySegment(loadedBoardingPasses));
     setIsDataReadyState(true);
     setIsLoadingState(false);
     return [true, null];
@@ -431,11 +516,15 @@ export function useItineraryDB() {
 
     const [loadedDeletedActivities, deletedErr] = await getAllDeletedActivities();
     if (deletedErr) return [null, deletedErr];
+
+    const [loadedBoardingPasses, boardingPassErr] = await getAllBoardingPasses();
+    if (boardingPassErr) return [null, boardingPassErr];
     
     // Update all state at once
     setItineraryDataState(loadedItineraryData);
     setManualActivitiesState(loadedManualActivities);
     setDeletedActivitiesState(loadedDeletedActivities);
+    setBoardingPassesState(organizeBoardingPassesBySegment(loadedBoardingPasses));
     setIsDataReadyState(true);
     setIsLoadingState(false);
     setShowSetupWizardState(false);
@@ -573,10 +662,61 @@ export function useItineraryDB() {
     setItineraryDataState(null);
     setManualActivitiesState({});
     setDeletedActivitiesState({});
+    setBoardingPassesState({});
     setIsDataReadyState(false);
     setShowSetupWizardState(true);
     
     console.log('✅ Database reset complete');
+    return [undefined, null];
+  }, []);
+
+  // ==========================================================================
+  // CALLBACK: ADD BOARDING PASS
+  // ==========================================================================
+  
+  /**
+   * Adds a new boarding pass for a flight segment.
+   * 
+   * @param {string} segmentId - The segment ID to associate the boarding pass with
+   * @param {Object} boardingPassData - The boarding pass JSON data
+   * @returns {Promise<[Object, null] | [null, Error]>} Go-style result tuple with added boarding pass
+   */
+  const addBoardingPass = useCallback(async (segmentId, boardingPassData) => {
+    const dataWithSegment = { ...boardingPassData, segmentId };
+    
+    const [addedPass, addErr] = await addBoardingPassToDB(dataWithSegment);
+    if (addErr) {
+      console.error('Failed to add boarding pass:', addErr);
+      return [null, addErr];
+    }
+    
+    setBoardingPassesState(previousState =>
+      addBoardingPassToState(previousState, addedPass)
+    );
+    return [addedPass, null];
+  }, []);
+
+  // ==========================================================================
+  // CALLBACK: DELETE BOARDING PASS
+  // ==========================================================================
+  
+  /**
+   * Deletes a boarding pass.
+   * 
+   * @param {string} segmentId - The segment ID the boarding pass belongs to
+   * @param {string} boardingPassId - ID of the boarding pass to delete
+   * @returns {Promise<[void, null] | [null, Error]>} Go-style result tuple
+   */
+  const deleteBoardingPass = useCallback(async (segmentId, boardingPassId) => {
+    const [, deleteErr] = await deleteBoardingPassFromDB(boardingPassId);
+    if (deleteErr) {
+      console.error('Failed to delete boarding pass:', deleteErr);
+      return [null, deleteErr];
+    }
+    
+    setBoardingPassesState(previousState =>
+      removeBoardingPassFromState(previousState, segmentId, boardingPassId)
+    );
     return [undefined, null];
   }, []);
 
@@ -593,6 +733,7 @@ export function useItineraryDB() {
     itineraryData: itineraryDataState,
     manualActivities: manualActivitiesState,
     deletedActivities: deletedActivitiesState,
+    boardingPasses: boardingPassesState,
     
     // Methods (with backward-compatible names)
     addActivity: addNewUserActivity,
@@ -601,6 +742,10 @@ export function useItineraryDB() {
     deleteOriginalActivity: deleteOriginalActivityById,
     importJsonData: importJsonDataToDatabase,
     completeSetup: completeSetupWizard,
-    resetDatabase: resetDatabaseToCleanState
+    resetDatabase: resetDatabaseToCleanState,
+    
+    // Boarding pass methods
+    addBoardingPass,
+    deleteBoardingPass
   };
 }

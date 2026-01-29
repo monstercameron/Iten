@@ -49,7 +49,7 @@
 const DATABASE_NAME = 'TravelItineraryDB';
 
 /** @constant {number} DATABASE_VERSION - Current schema version (increment on schema changes) */
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 /** @constant {number} MAX_DATE_RANGE_ITERATIONS - Safety limit for date range loops */
 const MAX_DATE_RANGE_ITERATIONS = 365;
@@ -67,7 +67,8 @@ const STORE_NAMES = {
   TRIPS: 'trips',
   USER_ACTIVITIES: 'userActivities',
   DELETED_ACTIVITIES: 'deletedActivities',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  BOARDING_PASSES: 'boardingPasses'
 };
 
 // =============================================================================
@@ -278,6 +279,12 @@ export function initDB() {
       // Create settings store
       if (!database.objectStoreNames.contains(STORE_NAMES.SETTINGS)) {
         database.createObjectStore(STORE_NAMES.SETTINGS, { keyPath: 'key' });
+      }
+
+      // Create boarding passes store (v3) - keyed by id with segmentId index
+      if (!database.objectStoreNames.contains(STORE_NAMES.BOARDING_PASSES)) {
+        const boardingPassesStore = database.createObjectStore(STORE_NAMES.BOARDING_PASSES, { keyPath: 'id' });
+        boardingPassesStore.createIndex('segmentId', 'segmentId', { unique: false });
       }
       
       console.log('✅ IndexedDB stores created/updated');
@@ -737,6 +744,136 @@ export async function updateTripSegment(tripName, segmentId, segmentUpdates) {
 }
 
 // =============================================================================
+// BOARDING PASS OPERATIONS
+// =============================================================================
+
+/**
+ * Adds a new boarding pass to the database.
+ * @async
+ * @param {Object} boardingPassData - The boarding pass data (must include segmentId)
+ * @returns {Promise<[Object, null] | [null, Error]>} Go-style result tuple with added boarding pass
+ */
+export async function addBoardingPass(boardingPassData) {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('addBoardingPass', dbErr)];
+
+  // Generate unique ID if not provided
+  const boardingPass = {
+    ...boardingPassData,
+    id: boardingPassData.id || `bp-${boardingPassData.segmentId}-${Date.now()}`,
+    importedAt: Date.now()
+  };
+
+  return new Promise((resolve) => {
+    const transaction = databaseConnection.transaction([STORE_NAMES.BOARDING_PASSES], 'readwrite');
+    const boardingPassesStore = transaction.objectStore(STORE_NAMES.BOARDING_PASSES);
+    const putRequest = boardingPassesStore.put(boardingPass);
+
+    putRequest.onsuccess = () => {
+      console.log('✅ Boarding pass added:', boardingPass.id);
+      resolve([boardingPass, null]);
+    };
+    putRequest.onerror = () => resolve([null, putRequest.error || new Error('Failed to add boarding pass')]);
+  });
+}
+
+/**
+ * Retrieves all boarding passes for a specific flight segment.
+ * @async
+ * @param {string} segmentId - The segment ID to get boarding passes for
+ * @returns {Promise<[Array<Object>, null] | [null, Error]>} Go-style result tuple
+ */
+export async function getBoardingPassesBySegment(segmentId) {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('getBoardingPassesBySegment', dbErr)];
+
+  return new Promise((resolve) => {
+    const transaction = databaseConnection.transaction([STORE_NAMES.BOARDING_PASSES], 'readonly');
+    const boardingPassesStore = transaction.objectStore(STORE_NAMES.BOARDING_PASSES);
+    const segmentIndex = boardingPassesStore.index('segmentId');
+    const getRequest = segmentIndex.getAll(segmentId);
+
+    getRequest.onsuccess = () => resolve([getRequest.result || [], null]);
+    getRequest.onerror = () => resolve([null, getRequest.error || new Error('Failed to get boarding passes')]);
+  });
+}
+
+/**
+ * Retrieves all boarding passes from the database.
+ * @async
+ * @returns {Promise<[Array<Object>, null] | [null, Error]>} Go-style result tuple
+ */
+export async function getAllBoardingPasses() {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('getAllBoardingPasses', dbErr)];
+
+  return new Promise((resolve) => {
+    const transaction = databaseConnection.transaction([STORE_NAMES.BOARDING_PASSES], 'readonly');
+    const boardingPassesStore = transaction.objectStore(STORE_NAMES.BOARDING_PASSES);
+    const getAllRequest = boardingPassesStore.getAll();
+
+    getAllRequest.onsuccess = () => resolve([getAllRequest.result || [], null]);
+    getAllRequest.onerror = () => resolve([null, getAllRequest.error || new Error('Failed to get all boarding passes')]);
+  });
+}
+
+/**
+ * Updates an existing boarding pass.
+ * @async
+ * @param {string} boardingPassId - ID of the boarding pass to update
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<[Object|null, null] | [null, Error]>} Go-style result tuple with updated boarding pass
+ */
+export async function updateBoardingPass(boardingPassId, updates) {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('updateBoardingPass', dbErr)];
+
+  return new Promise((resolve) => {
+    const transaction = databaseConnection.transaction([STORE_NAMES.BOARDING_PASSES], 'readwrite');
+    const boardingPassesStore = transaction.objectStore(STORE_NAMES.BOARDING_PASSES);
+    const getRequest = boardingPassesStore.get(boardingPassId);
+
+    getRequest.onsuccess = () => {
+      const existingPass = getRequest.result;
+      if (!existingPass) {
+        resolve([null, null]);
+        return;
+      }
+
+      const updatedPass = { ...existingPass, ...updates, updatedAt: Date.now() };
+      const putRequest = boardingPassesStore.put(updatedPass);
+
+      putRequest.onsuccess = () => resolve([updatedPass, null]);
+      putRequest.onerror = () => resolve([null, putRequest.error || new Error('Failed to update boarding pass')]);
+    };
+    getRequest.onerror = () => resolve([null, getRequest.error || new Error('Failed to get boarding pass')]);
+  });
+}
+
+/**
+ * Deletes a boarding pass from the database.
+ * @async
+ * @param {string} boardingPassId - ID of the boarding pass to delete
+ * @returns {Promise<[void, null] | [null, Error]>} Go-style result tuple
+ */
+export async function deleteBoardingPass(boardingPassId) {
+  const [, dbErr] = await initDB();
+  if (dbErr) return [null, wrapError('deleteBoardingPass', dbErr)];
+
+  return new Promise((resolve) => {
+    const transaction = databaseConnection.transaction([STORE_NAMES.BOARDING_PASSES], 'readwrite');
+    const boardingPassesStore = transaction.objectStore(STORE_NAMES.BOARDING_PASSES);
+    const deleteRequest = boardingPassesStore.delete(boardingPassId);
+
+    deleteRequest.onsuccess = () => {
+      console.log('🗑️ Boarding pass deleted:', boardingPassId);
+      resolve([undefined, null]);
+    };
+    deleteRequest.onerror = () => resolve([null, deleteRequest.error || new Error('Failed to delete boarding pass')]);
+  });
+}
+
+// =============================================================================
 // DATABASE MANAGEMENT OPERATIONS
 // =============================================================================
 
@@ -859,7 +996,8 @@ export async function clearAllData() {
       STORE_NAMES.TRIPS,
       STORE_NAMES.USER_ACTIVITIES,
       STORE_NAMES.DELETED_ACTIVITIES,
-      STORE_NAMES.SETTINGS
+      STORE_NAMES.SETTINGS,
+      STORE_NAMES.BOARDING_PASSES
     ];
     
     const transaction = databaseConnection.transaction(allStoreNames, 'readwrite');

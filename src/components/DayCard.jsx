@@ -275,6 +275,9 @@ export const DayCard = memo(function DayCard({
   onRemoveActivity,
   onUpdateActivity,
   todayDateKey,
+  boardingPasses,
+  onAddBoardingPass,
+  onDeleteBoardingPass,
 }) {
   // ============================================================================
   // LOCAL STATE
@@ -498,6 +501,9 @@ export const DayCard = memo(function DayCard({
             isExpanded={checkIsSectionExpanded(SECTION_NAMES.travel)}
             onToggle={() => onToggleSection(SECTION_NAMES.travel)}
             showBackupPlans={showBackupPlans}
+            boardingPasses={boardingPasses}
+            onAddBoardingPass={onAddBoardingPass}
+            onDeleteBoardingPass={onDeleteBoardingPass}
           />
 
           {/* Shelter Section */}

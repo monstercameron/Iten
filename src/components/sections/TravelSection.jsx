@@ -8,12 +8,15 @@
  * - Embedded route maps for flights
  * - Collapsible backup plan accordion
  * - Flight details (airline, aircraft, cabin class, duration)
+ * - Boarding pass integration (import, display, delete)
  */
 
 import React, { useState, memo } from "react";
-import { ChevronDown, ChevronRight, Plane, Clock, Timer, MapPin, Armchair, Coffee, Hourglass, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Plane, Clock, Timer, MapPin, Armchair, Coffee, Hourglass, ShieldCheck, Ticket } from "lucide-react";
 import { StatusPill } from "../StatusPill";
 import { TravelRouteMap } from "../TravelRouteMap";
+import { BoardingPassCard } from "../BoardingPassCard";
+import { BoardingPassImportModal } from "../BoardingPassImportModal";
 import { classNames } from "../../utils/classNames";
 
 /* ============================================================================
@@ -66,6 +69,16 @@ import { classNames } from "../../utils/classNames";
  * @returns {boolean} True if item is a buffer segment
  */
 const isBufferTimeSegment = (travelItem) => travelItem.status === 'BUFFER';
+
+/**
+ * Determines if a travel segment is a flight (can have boarding pass)
+ * @pure
+ * @param {TravelSegment} travelItem - Travel segment to check
+ * @returns {boolean} True if item is a flight
+ */
+const isFlightSegment = (travelItem) => {
+  return travelItem.type === 'Flight' || Boolean(travelItem.flight);
+};
 
 /**
  * Determines if a travel segment has route map data
@@ -247,13 +260,48 @@ function BackupPlanAccordion({ backupPlanData }) {
  * @param {boolean} props.isExpanded - Whether the section is expanded
  * @param {Function} props.onToggle - Callback to toggle section expansion
  * @param {boolean} [props.showBackupPlans] - Whether to show backup plan accordions
+ * @param {Object} [props.boardingPasses] - Boarding passes keyed by segment ID
+ * @param {Function} [props.onAddBoardingPass] - Callback to add boarding pass (segmentId, data) => Promise
+ * @param {Function} [props.onDeleteBoardingPass] - Callback to delete boarding pass (segmentId, passId) => Promise
  * @returns {JSX.Element|null} Travel section or null if no items
  */
-export const TravelSection = memo(function TravelSection({ items, isExpanded, onToggle, showBackupPlans }) {
+export const TravelSection = memo(function TravelSection({ 
+  items, 
+  isExpanded, 
+  onToggle, 
+  showBackupPlans,
+  boardingPasses = {},
+  onAddBoardingPass,
+  onDeleteBoardingPass
+}) {
+  // State for boarding pass import modal
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importModalSegment, setImportModalSegment] = useState(null);
+  const [importModalFlightInfo, setImportModalFlightInfo] = useState('');
+
   // Early return if no travel items to display
   if (!items || items.length === 0) return null;
 
   const travelSegmentCount = items.length;
+
+  /**
+   * Opens the boarding pass import modal for a specific segment
+   */
+  const handleOpenImportModal = (segment) => {
+    const flightInfo = `${segment.flight || ''} ${segment.route || ''}`.trim();
+    setImportModalSegment(segment.id);
+    setImportModalFlightInfo(flightInfo);
+    setImportModalOpen(true);
+  };
+
+  /**
+   * Closes the boarding pass import modal
+   */
+  const handleCloseImportModal = () => {
+    setImportModalOpen(false);
+    setImportModalSegment(null);
+    setImportModalFlightInfo('');
+  };
 
   return (
     <div className="border border-blue-900/50 rounded-lg overflow-hidden bg-blue-950/20">
@@ -366,11 +414,46 @@ export const TravelSection = memo(function TravelSection({ items, isExpanded, on
               {showBackupPlans && travelItem.backupPlan && (
                 <BackupPlanAccordion backupPlanData={travelItem.backupPlan} />
               )}
+
+              {/* Boarding Pass Section - Only for flights */}
+              {isFlightSegment(travelItem) && (
+                <div className="mt-3 pt-3 border-t border-blue-900/30">
+                  {/* Display existing boarding passes */}
+                  {boardingPasses[travelItem.id]?.map((pass) => (
+                    <BoardingPassCard
+                      key={pass.id}
+                      boardingPass={pass}
+                      segmentId={travelItem.id}
+                      onDelete={onDeleteBoardingPass}
+                    />
+                  ))}
+
+                  {/* Add Boarding Pass Button */}
+                  {onAddBoardingPass && (
+                    <button
+                      onClick={() => handleOpenImportModal(travelItem)}
+                      className="flex items-center gap-2 mt-2 px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/50 rounded-lg transition-colors"
+                    >
+                      <Ticket className="h-3.5 w-3.5" />
+                      {boardingPasses[travelItem.id]?.length > 0 ? 'Add Another Boarding Pass' : 'Add Boarding Pass'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             )
           ))}
         </div>
       )}
+
+      {/* Boarding Pass Import Modal */}
+      <BoardingPassImportModal
+        isOpen={importModalOpen}
+        onClose={handleCloseImportModal}
+        onSave={onAddBoardingPass}
+        segmentId={importModalSegment}
+        flightInfo={importModalFlightInfo}
+      />
     </div>
   );
 });

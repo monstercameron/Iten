@@ -227,13 +227,16 @@ export function ItineraryPage() {
     itineraryData: storedItineraryData,
     manualActivities: manualActivitiesByDate,
     deletedActivities: deletedActivityIdsByDate,
+    boardingPasses: boardingPassesBySegment,
     addActivity: addActivityToDatabase,
     updateActivity: updateActivityInDatabase,
     removeActivity: removeActivityFromDatabase,
     deleteOriginalActivity: deleteOriginalActivityFromDatabase,
     importJsonData: importJsonToDatabase,
     completeSetup: completeSetupWizard,
-    resetDatabase: resetAllDatabaseData
+    resetDatabase: resetAllDatabaseData,
+    addBoardingPass: addBoardingPassToDatabase,
+    deleteBoardingPass: deleteBoardingPassFromDatabase
   } = useItineraryDB();
   
   // ============================================================================
@@ -795,6 +798,9 @@ export function ItineraryPage() {
             onRemoveActivity={handleRemoveActivity}
             onUpdateActivity={handleUpdateManualActivity}
             todayDateKey={todayDateKey}
+            boardingPasses={boardingPassesBySegment}
+            onAddBoardingPass={addBoardingPassToDatabase}
+            onDeleteBoardingPass={deleteBoardingPassFromDatabase}
           />
         ))}
 
