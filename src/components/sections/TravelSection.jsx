@@ -12,7 +12,7 @@
  */
 
 import React, { useState, memo } from "react";
-import { ChevronDown, ChevronRight, Plane, Clock, Timer, MapPin, Armchair, Coffee, Hourglass, ShieldCheck, Ticket } from "lucide-react";
+import { ChevronDown, ChevronRight, Plane, Clock, Timer, MapPin, Armchair, Coffee, Hourglass, ShieldCheck, Ticket, HelpCircle, X, Copy, Check } from "lucide-react";
 import { StatusPill } from "../StatusPill";
 import { TravelRouteMap } from "../TravelRouteMap";
 import { BoardingPassCard } from "../BoardingPassCard";
@@ -104,6 +104,163 @@ const getBackupOptionPriorityClasses = (priority) => {
     default: return "bg-zinc-950/40 border border-zinc-900/50";
   }
 };
+
+/**
+ * Full AI prompt for boarding pass conversion - contains all instructions and examples
+ * @constant {string}
+ */
+const BOARDING_PASS_AI_PROMPT = `Convert this boarding pass image to JSON format.
+
+INSTRUCTIONS:
+1. Extract ALL visible information from the boarding pass
+2. Use the exact field names shown in the schema below
+3. Return ONLY the JSON object, no other text
+4. If a field is not visible, omit it from the JSON
+5. Format times as they appear (e.g., "5:40 PM" or "17:40")
+6. Format dates as YYYY-MM-DD (e.g., "2026-01-30")
+7. Passenger name should be LASTNAME/FIRSTNAME format
+
+JSON SCHEMA:
+{
+  "passenger": "LASTNAME/FIRSTNAME",
+  "pnr": "Confirmation/Record Locator code",
+  "flight": "Flight number (e.g., UA249)",
+  "airline": "Airline name",
+  "seat": "Seat assignment (e.g., 24A)",
+  "gate": "Gate number",
+  "boardingTime": "Boarding time",
+  "departureTime": "Departure time",
+  "boardingGroup": "Boarding group/zone",
+  "class": "Cabin class (Economy, Business, First)",
+  "departure": "Departure airport code (e.g., FLL)",
+  "arrival": "Arrival airport code (e.g., SFO)",
+  "date": "Flight date (YYYY-MM-DD)",
+  "sequence": "Sequence number if shown",
+  "frequentFlyer": "Frequent flyer number if shown"
+}
+
+EXAMPLE OUTPUT:
+{
+  "passenger": "CAMERON/EARL",
+  "pnr": "ABC123",
+  "flight": "UA249",
+  "airline": "United Airlines",
+  "seat": "24A",
+  "gate": "B12",
+  "boardingTime": "5:40 PM",
+  "departureTime": "6:10 PM",
+  "boardingGroup": "3",
+  "class": "Economy",
+  "departure": "FLL",
+  "arrival": "SFO",
+  "date": "2026-01-30",
+  "sequence": "0142"
+}
+
+Now extract the boarding pass information from the image:`;
+
+/**
+ * Help modal for boarding pass conversion instructions
+ */
+function BoardingPassHelpModal({ isOpen, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyInstructions = async () => {
+    await navigator.clipboard.writeText(BOARDING_PASS_AI_PROMPT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative w-full max-w-lg bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-zinc-700 sticky top-0 bg-zinc-900">
+          <h2 className="text-lg font-semibold text-zinc-100">
+            🎫 How to Add a Boarding Pass
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 space-y-4">
+          {/* Step 1 */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-400 mb-2">Step 1: Copy the AI prompt</h3>
+            <p className="text-sm text-zinc-300 mb-3">
+              Click the button below to copy the full instructions, schema, and example to your clipboard.
+            </p>
+            <button
+              onClick={handleCopyInstructions}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-amber-100 bg-amber-700 hover:bg-amber-600 rounded-lg transition-colors"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? 'Copied to Clipboard!' : 'Copy AI Prompt & Instructions'}
+            </button>
+          </div>
+
+          {/* Step 2 */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-400 mb-2">Step 2: Send to AI with your boarding pass</h3>
+            <p className="text-sm text-zinc-300">
+              Open any AI (ChatGPT, Claude, Gemini, etc.), paste the instructions, and attach your boarding pass image (screenshot, photo, or PDF).
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-400 mb-2">Step 3: Paste the JSON result</h3>
+            <p className="text-sm text-zinc-300">
+              Copy the JSON that the AI generates and paste it into the "Add Boarding Pass" form.
+            </p>
+          </div>
+
+          {/* Preview of what's copied */}
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-400 mb-2">What gets copied:</h3>
+            <pre className="bg-zinc-950 rounded-lg p-3 text-xs text-zinc-400 border border-zinc-700 overflow-x-auto max-h-32 overflow-y-auto">
+{BOARDING_PASS_AI_PROMPT.slice(0, 300)}...
+            </pre>
+          </div>
+
+          {/* Tips */}
+          <div className="bg-blue-950/30 border border-blue-800/50 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-blue-300 mb-2">💡 Tips</h3>
+            <ul className="text-xs text-blue-200 space-y-1">
+              <li>• Works with email confirmations, Apple/Google Wallet, PDFs, or photos</li>
+              <li>• Add multiple passes for each traveler on the same flight</li>
+              <li>• The raw JSON is always viewable if you need to check details</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-zinc-700">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors"
+          >
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ============================================================================
    SUB-COMPONENTS
@@ -278,6 +435,9 @@ export const TravelSection = memo(function TravelSection({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importModalSegment, setImportModalSegment] = useState(null);
   const [importModalFlightInfo, setImportModalFlightInfo] = useState('');
+  
+  // State for help modal
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   // Early return if no travel items to display
   if (!items || items.length === 0) return null;
@@ -430,13 +590,22 @@ export const TravelSection = memo(function TravelSection({
 
                   {/* Add Boarding Pass Button */}
                   {onAddBoardingPass && (
-                    <button
-                      onClick={() => handleOpenImportModal(travelItem)}
-                      className="flex items-center gap-2 mt-2 px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/50 rounded-lg transition-colors"
-                    >
-                      <Ticket className="h-3.5 w-3.5" />
-                      {boardingPasses[travelItem.id]?.length > 0 ? 'Add Another Boarding Pass' : 'Add Boarding Pass'}
-                    </button>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => handleOpenImportModal(travelItem)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/50 rounded-lg transition-colors"
+                      >
+                        <Ticket className="h-3.5 w-3.5" />
+                        {boardingPasses[travelItem.id]?.length > 0 ? 'Add Another Boarding Pass' : 'Add Boarding Pass'}
+                      </button>
+                      <button
+                        onClick={() => setHelpModalOpen(true)}
+                        className="p-2.5 text-zinc-400 hover:text-amber-400 bg-zinc-800/50 hover:bg-zinc-700/50 border border-zinc-700 rounded-lg transition-colors"
+                        title="How to add a boarding pass"
+                      >
+                        <HelpCircle className="h-5 w-5" />
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -453,6 +622,12 @@ export const TravelSection = memo(function TravelSection({
         onSave={onAddBoardingPass}
         segmentId={importModalSegment}
         flightInfo={importModalFlightInfo}
+      />
+
+      {/* Boarding Pass Help Modal */}
+      <BoardingPassHelpModal
+        isOpen={helpModalOpen}
+        onClose={() => setHelpModalOpen(false)}
       />
     </div>
   );
